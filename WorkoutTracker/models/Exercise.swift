@@ -1,6 +1,6 @@
 import Foundation
 
-struct Exercise: Identifiable, Codable {
+struct Exercise: Identifiable, Codable, Equatable {
     let id: UUID
     var name: String
     var sets: Int
