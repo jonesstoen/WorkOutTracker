@@ -1,5 +1,10 @@
 import SwiftUI
 
+struct IdentifiableInt: Identifiable {
+    var id: Int { value }
+    let value: Int
+}
+
 struct AddWorkoutView: View {
     @Environment(\.dismiss) var dismiss
     @Binding var workouts: [Workout]
@@ -7,6 +12,7 @@ struct AddWorkoutView: View {
     @State private var type = ""
     @State private var exercises: [Exercise] = []
     @State private var showExerciseSheet = false
+    @State private var editingExerciseIndex: IdentifiableInt? = nil
 
     var body: some View {
         NavigationView {
@@ -16,11 +22,17 @@ struct AddWorkoutView: View {
                 }
 
                 Section(header: Text("Øvelser")) {
-                    ForEach(exercises) { exercise in
+                    ForEach(Array(exercises.enumerated()), id: \.element.id) { index, exercise in
                         VStack(alignment: .leading) {
                             Text(exercise.name).bold()
                             Text("Sett: \(exercise.sets), Reps: \(exercise.reps), Vekt: \(exercise.weight, specifier: "%.1f") kg")
                         }
+                        .onTapGesture {
+                            editingExerciseIndex = IdentifiableInt(value: index)
+                        }
+                    }
+                    .onDelete { indexSet in
+                        exercises.remove(atOffsets: indexSet)
                     }
 
                     Button {
@@ -45,6 +57,9 @@ struct AddWorkoutView: View {
             }
             .sheet(isPresented: $showExerciseSheet) {
                 NewExerciseSheet(exercises: $exercises)
+            }
+            .sheet(item: $editingExerciseIndex) { identified in
+                EditExerciseSheet(exercise: $exercises[identified.value])
             }
         }
     }

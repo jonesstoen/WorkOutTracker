@@ -75,10 +75,10 @@
 		157A85792E08830800CB540F = {
 			isa = PBXGroup;
 			children = (
-				157A85842E08830800CB540F /* WorkoutTracker */,
 				157A85952E08830C00CB540F /* WorkoutTrackerTests */,
 				157A859F2E08830C00CB540F /* WorkoutTrackerUITests */,
 				157A85832E08830800CB540F /* Products */,
+				157A85842E08830800CB540F /* WorkoutTracker */,
 			);
 			sourceTree = "<group>";
 		};
