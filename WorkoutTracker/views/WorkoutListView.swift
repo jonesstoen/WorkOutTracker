@@ -4,15 +4,28 @@ struct WorkoutListView: View {
     @Binding var workouts: [Workout]
     @State private var showAddWorkout = false
 
+    var groupedWorkouts: [String: [Workout]] {
+        Dictionary(grouping: workouts) { workout in
+            let weekOfYear = Calendar.current.component(.weekOfYear, from: workout.date)
+            let year = Calendar.current.component(.yearForWeekOfYear, from: workout.date)
+            return "Uke \(weekOfYear), \(year)"
+        }
+    }
+
     var body: some View {
         List {
-            ForEach(workouts) { workout in
-                NavigationLink(destination: WorkoutDetailView(workout: workout)) {
-                    workoutCard(for: workout)
+            ForEach(groupedWorkouts.keys.sorted(by: >), id: \.self) { weekKey in
+                Section(header: Text(weekKey).font(.headline)) {
+                    ForEach(groupedWorkouts[weekKey]!) { workout in
+                        NavigationLink(destination: WorkoutDetailView(workout: workout)) {
+                            workoutCard(for: workout)
+                        }
+                    }
+                    .onDelete { indexSet in
+                        deleteWorkout(at: indexSet, in: weekKey)
+                    }
                 }
-                .listRowBackground(Color.clear)
             }
-            .onDelete(perform: deleteWorkout)
         }
         .listStyle(.plain)
         .toolbar {
@@ -28,11 +41,12 @@ struct WorkoutListView: View {
         .sheet(isPresented: $showAddWorkout) {
             AddWorkoutView(workouts: $workouts)
         }
-        .animation(.default, value: workouts)
     }
 
-    private func deleteWorkout(at offsets: IndexSet) {
-        workouts.remove(atOffsets: offsets)
+    private func deleteWorkout(at offsets: IndexSet, in weekKey: String) {
+        guard let workoutsInSection = groupedWorkouts[weekKey] else { return }
+        let itemsToDelete = offsets.map { workoutsInSection[$0] }
+        workouts.removeAll { itemsToDelete.contains($0) }
     }
 
     private func workoutCard(for workout: Workout) -> some View {
@@ -48,7 +62,12 @@ struct WorkoutListView: View {
                 Text(workout.date.formatted(date: .abbreviated, time: .omitted))
                     .font(.subheadline)
                     .foregroundColor(.secondary)
-                if !workout.exercises.isEmpty {
+
+                if workout.exercises.isEmpty {
+                    Text("(Ingen øvelser)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                } else {
                     Text("\(workout.exercises.count) øvelse\(workout.exercises.count == 1 ? "" : "r")")
                         .font(.caption)
                         .foregroundColor(.secondary)
@@ -60,14 +79,11 @@ struct WorkoutListView: View {
 
     private func iconForType(_ type: String) -> String {
         switch type.lowercased() {
-        case "push": return "arrow.up.circle.fill"
-        case "pull": return "arrow.down.circle.fill"
+        case "push": return "arrow.up"
+        case "pull": return "arrow.down"
         case "bein", "legs": return "figure.walk"
-        case "bryst": return "heart.fill"
-        case "rygg": return "square.stack.3d.up.fill"
-        case "skuldre": return "bolt.fill"
-        case "arm": return "hand.raised.fill"
-        default: return "dumbbell"
+        case "chest": return "dumbbell"
+        default: return "bolt"
         }
     }
 }
