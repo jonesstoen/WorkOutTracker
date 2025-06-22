@@ -1,24 +1,12 @@
-//
-//  ContentView.swift
-//  WorkoutTracker
-//
-//  Created by Johannes Støen on 22/06/2025.
-//
-
 import SwiftUI
 
 struct ContentView: View {
-    var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
-        }
-        .padding()
-    }
-}
+    @StateObject private var store = WorkoutStore()
 
-#Preview {
-    ContentView()
+    var body: some View {
+        NavigationView {
+            WorkoutListView(workouts: $store.workouts)
+                .navigationTitle("Mine Økter")
+        }
+    }
 }
