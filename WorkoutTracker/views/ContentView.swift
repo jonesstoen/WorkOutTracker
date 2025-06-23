@@ -8,11 +8,11 @@ struct ContentView: View {
         TabView(selection: $selectedTab) {
             NavigationView{
                 HomeView(workouts: $store.workouts)
-                    .navigationTitle("Oversikt")
+                    
                 
             }
             .tabItem {
-                Label("Home", systemImage: "house")
+                Label("Oversikt", systemImage: "house")
             }
             .tag(2)
             NavigationView {
