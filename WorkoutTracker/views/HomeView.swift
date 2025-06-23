@@ -26,6 +26,15 @@ struct HomeView: View {
                 }
             }
         }
+    private var greeting: String {
+            let hour = Calendar.current.component(.hour, from: Date())
+            switch hour {
+            case 5..<12:   return "God morgen"
+            case 12..<17:  return "God dag"
+            case 17..<22:  return "God kveld"
+            default:       return "God natt"
+            }
+        }
 
     // Beregn antall økter denne uken
     private var workoutsThisWeek: Int {
@@ -73,6 +82,17 @@ struct HomeView: View {
         NavigationView {
             ScrollView {
                 VStack(spacing: 40) {
+                    VStack(alignment: .leading, spacing: 4) {
+                                           Text("\(greeting), Johannes!")
+                                               .font(.largeTitle)
+                                               .bold()
+                                           Text(Date(), style: .date)
+                                               .font(.subheadline)
+                                               .foregroundColor(.secondary)
+                                       }
+                                       .frame(maxWidth: .infinity, alignment: .leading)
+                                       .padding(.horizontal, 16)
+                                       .padding(.top, 16)
                     
                     
                     Card {
