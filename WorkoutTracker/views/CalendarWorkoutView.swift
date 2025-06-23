@@ -5,82 +5,103 @@ struct CalendarWorkoutView: View {
     @State private var selectedDate = Date()
     @State private var currentMonth = Date()
 
-    private var daysInMonth: [Date] {
+    private var daysInMonth: [Date?] {
         guard let monthInterval = Calendar.current.dateInterval(of: .month, for: currentMonth) else {
             return []
         }
-        return Calendar.current.generateDates(
+
+        let dates = Calendar.current.generateDates(
             inside: monthInterval,
             matching: DateComponents(hour: 0, minute: 0, second: 0)
         )
+
+        let firstWeekday = Calendar.current.component(.weekday, from: dates.first!)
+        let paddingDays = firstWeekday - 1
+
+        return Array(repeating: nil, count: paddingDays) + dates.map { Optional($0) }
     }
 
     var body: some View {
-        VStack {
-            HStack {
-                Button(action: { changeMonth(by: -1) }) {
-                    Image(systemName: "chevron.left")
+        ScrollView {
+            VStack(spacing: 12) {
+                // Navigasjon
+                HStack {
+                    Button(action: { changeMonth(by: -1) }) {
+                        Image(systemName: "chevron.left")
+                    }
+                    Spacer()
+                    Text(currentMonth.formatted(.dateTime.year().month()))
+                        .font(.title2)
+                        .bold()
+                    Spacer()
+                    Button(action: { changeMonth(by: 1) }) {
+                        Image(systemName: "chevron.right")
+                    }
                 }
+                .padding(.horizontal)
 
-                Spacer()
+                // Ukedager (med unik ID)
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7)) {
+                    let weekdaySymbols = ["S", "M", "T", "W", "T", "F", "S"]
+                    ForEach(Array(weekdaySymbols.enumerated()), id: \.offset) { _, day in
+                        Text(day)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.secondary)
+                    }
 
-                Text(currentMonth.formatted(.dateTime.year().month()))
-                    .font(.title2)
-                    .bold()
+                    // Dager
+                    ForEach(daysInMonth.indices, id: \.self) { index in
+                        if let date = daysInMonth[index] {
+                            ZStack {
+                                if Calendar.current.isDate(date, inSameDayAs: selectedDate) {
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .fill(Color.blue)
+                                        .frame(height: 36)
+                                } else if hasWorkout(on: date) {
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .fill(Color.green.opacity(0.8))
+                                        .frame(height: 36)
+                                }
 
-                Spacer()
-
-                Button(action: { changeMonth(by: 1) }) {
-                    Image(systemName: "chevron.right")
-                }
-            }
-            .padding(.horizontal)
-
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7)) {
-                ForEach([ "M", "TI", "O", "TO", "F", "L", "S"], id: \.self) { day in
-                    Text(day).fontWeight(.bold)
-                }
-
-                ForEach(daysInMonth, id: \.self) { date in
-                    VStack {
-                        Text("\(Calendar.current.component(.day, from: date))")
-                            .foregroundColor(Calendar.current.isDate(date, inSameDayAs: selectedDate) ? .white : .primary)
-                            .frame(maxWidth: .infinity)
-                            .background(
-                                Circle()
-                                    .fill(Calendar.current.isDate(date, inSameDayAs: selectedDate) ? Color.blue : Color.clear)
-                            )
-                            .onTapGesture {
-                                selectedDate = date
+                                Text("\(Calendar.current.component(.day, from: date))")
+                                    .foregroundColor(Calendar.current.isDate(date, inSameDayAs: selectedDate) ? .white : .primary)
+                                    .frame(maxWidth: .infinity, minHeight: 36)
+                                    .onTapGesture {
+                                        selectedDate = date
+                                    }
                             }
-
-                        if hasWorkout(on: date) {
-                            Circle()
-                                .fill(Color.blue)
-                                .frame(width: 5, height: 5)
                         } else {
-                            Circle()
-                                .fill(Color.clear)
-                                .frame(width: 5, height: 5)
+                            Color.clear.frame(height: 36)
                         }
                     }
-                    .padding(4)
                 }
-            }
+                .padding(.horizontal)
 
-            Divider().padding(.top)
+                Divider().padding(.top, 4)
 
-            List {
-                ForEach(workouts.filter {
-                    Calendar.current.isDate($0.date, inSameDayAs: selectedDate)
-                }) { workout in
-                    NavigationLink(destination: WorkoutDetailView(workout: workout)) {
-                        Text(workout.type)
+                // Øktliste
+                VStack(alignment: .leading) {
+                    Text("Økter den \(selectedDate.formatted(date: .abbreviated, time: .omitted))")
+                        .font(.headline)
+                        .padding(.leading)
+
+                    ForEach(workouts.filter { Calendar.current.isDate($0.date, inSameDayAs: selectedDate) }) { workout in
+                        NavigationLink(destination: WorkoutDetailView(workout: workout)) {
+                            HStack {
+                                Image(systemName: "flame")
+                                Text(workout.type)
+                            }
+                            .padding(.horizontal)
+                            .padding(.vertical, 8)
+                            .background(Color(.secondarySystemBackground))
+                            .cornerRadius(10)
+                        }
+                        .padding(.horizontal)
                     }
                 }
+                .padding(.top, 8)
             }
         }
-        .padding()
     }
 
     func changeMonth(by value: Int) {
@@ -94,22 +115,18 @@ struct CalendarWorkoutView: View {
     }
 }
 
-// Extension to generate all days in a given month
 extension Calendar {
     func generateDates(
         inside interval: DateInterval,
         matching components: DateComponents
     ) -> [Date] {
         var dates: [Date] = []
-        var current = interval.start
+        var current = self.startOfDay(for: interval.start)
 
-        while current < interval.end {
-            if let next = self.nextDate(after: current, matching: components, matchingPolicy: .nextTime) {
-                dates.append(next)
-                current = next
-            } else {
-                break
-            }
+        while current <= interval.end {
+            dates.append(current)
+            guard let next = self.date(byAdding: .day, value: 1, to: current) else { break }
+            current = next
         }
 
         return dates
