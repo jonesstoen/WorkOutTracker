@@ -14,10 +14,10 @@ struct Card<Content: View>: View {
         self.content = content()
     }
     var body: some View {
-        content
-            .padding(20)
-            .background(Color(.secondarySystemBackground))
-            .cornerRadius(12)
-            .shadow(color: Color(.black).opacity(0.1), radius: 4, x: 0, y: 2)
+      content
+        .padding(20)
+        .background(.ultraThinMaterial)   // ← dynamisk, lys/mørk modus
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 4)
     }
 }

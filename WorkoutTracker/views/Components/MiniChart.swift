@@ -1,68 +1,50 @@
+// MiniChart.swift
+// WorkoutTracker
 //
-//  MiniChart.swift
-//  WorkoutTracker
-//
-//  Created by Johannes Støen on 23/06/2025.
-//
+// Bruker SwiftUI Charts for et mer native og rikt diagram
+// Krever iOS 16+
 
 import SwiftUI
+import Charts
 
 struct MiniChart: View {
     let data: [Int]
     let labels: [String]
 
-    private var maxVal: Int { data.max() ?? 1 }
+    private var maxVal: Int { max(data.max() ?? 1, 1) }
 
     var body: some View {
-        VStack(spacing: 4) {
-            GeometryReader { geo in
-                // Linjegraf
-                Path { path in
-                    for (i, val) in data.enumerated() {
-                        let x = geo.size.width * CGFloat(i) / CGFloat(data.count - 1)
-                        let y = geo.size.height * (1 - CGFloat(val) / CGFloat(maxVal))
-                        if i == 0 { path.move(to: .init(x: x, y: y)) }
-                        else     { path.addLine(to: .init(x: x, y: y)) }
-                    }
-                }
-                .stroke(
-                    LinearGradient(
-                        gradient: Gradient(colors: [.green, .blue]),
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    ),
-                    lineWidth: 2
+        Chart {
+            ForEach(Array(data.enumerated()), id: \.offset) { index, val in
+                LineMark(
+                    x: .value("Dag", labels[index]),
+                    y: .value("Økter", val)
                 )
-
-                // Markørpunkter og verditekster
-                ForEach(Array(data.enumerated()), id: \.offset) { index, val in
-                    let x = geo.size.width * CGFloat(index) / CGFloat(data.count - 1)
-                    let y = geo.size.height * (1 - CGFloat(val) / CGFloat(maxVal))
-                    Circle()
-                        .fill(Color.blue)
-                        .frame(width: 6, height: 6)
-                        .position(x: x, y: y)
-                    if val > 0 {
-                        Text("\(val)")
-                            .font(.caption2)
-                            .foregroundColor(.primary)
-                            .position(x: x, y: y - 10)
-                    }
-                }
-            }
-            .frame(height: 60)
-
-            // X-akse etiketter
-            HStack {
-                ForEach(Array(labels.enumerated()), id: \.offset) { _, label in
-                    Text(label)
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                        .frame(maxWidth: .infinity)
-                }
+                .interpolationMethod(.catmullRom)       // glatt kurve
+                .foregroundStyle(Gradient(colors: [.green, .blue]))
+                .lineStyle(StrokeStyle(lineWidth: 2))
+                PointMark(
+                    x: .value("Dag", labels[index]),
+                    y: .value("Økter", val)
+                )
+                .symbolSize(60)
+                .foregroundStyle(.blue)
             }
         }
+        .chartYScale(domain: 0...Double(maxVal))
+        .chartXAxis {
+            AxisMarks(values: labels) { value in
+                AxisGridLine().foregroundStyle(.secondary.opacity(0.2))
+                AxisTick()
+                AxisValueLabel()               // bruker labels fra x-verdiene
+            }
+        }
+        .chartYAxis {
+            AxisMarks(position: .leading, values: [0, maxVal]) { value in
+                AxisGridLine().foregroundStyle(.secondary.opacity(0.2))
+                AxisValueLabel()
+            }
+        }
+        .frame(height: 120)
     }
 }
-
-
