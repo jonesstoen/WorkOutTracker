@@ -51,9 +51,9 @@ struct WorkoutListView: View {
 
     private func workoutCard(for workout: Workout) -> some View {
         HStack(alignment: .top, spacing: 12) {
-            Image(systemName: iconForType(workout.type))
+            Image(systemName: workout.category.iconName)
                 .font(.title2)
-                .foregroundColor(.accentColor)
+                .foregroundColor(workout.category.color)
                 .frame(width: 32)
 
             VStack(alignment: .leading, spacing: 4) {
@@ -75,15 +75,5 @@ struct WorkoutListView: View {
             }
         }
         .padding(.vertical, 8)
-    }
-
-    private func iconForType(_ type: String) -> String {
-        switch type.lowercased() {
-        case "push": return "arrow.up"
-        case "pull": return "arrow.down"
-        case "bein", "legs": return "figure.walk"
-        case "chest": return "dumbbell"
-        default: return "bolt"
-        }
     }
 }
