@@ -1,24 +1,28 @@
 import SwiftUI
 
-struct IdentifiableInt: Identifiable {
-    var id: Int { value }
-    let value: Int
-}
-
 struct AddWorkoutView: View {
     @Environment(\.dismiss) var dismiss
     @Binding var workouts: [Workout]
 
     @State private var type = ""
+    @State private var category: WorkoutCategory = .strength
     @State private var exercises: [Exercise] = []
+
     @State private var showExerciseSheet = false
     @State private var editingExerciseIndex: IdentifiableInt? = nil
 
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Type")) {
-                    TextField("Push / Pull / Bein", text: $type)
+                Section(header: Text("Type og kategori")) {
+                    TextField("F.eks. Push / Bein / Øktnavn", text: $type)
+
+                    Picker("Kategori", selection: $category) {
+                        ForEach(WorkoutCategory.allCases) { cat in
+                            Label(cat.rawValue, systemImage: cat.iconName)
+                                .tag(cat)
+                        }
+                    }
                 }
 
                 Section(header: Text("Øvelser")) {
@@ -49,7 +53,7 @@ struct AddWorkoutView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Lagre") {
-                        let newWorkout = Workout(date: .now, type: type, exercises: exercises)
+                        let newWorkout = Workout(date: .now, type: type, category: category, exercises: exercises)
                         workouts.append(newWorkout)
                         dismiss()
                     }
@@ -58,8 +62,8 @@ struct AddWorkoutView: View {
             .sheet(isPresented: $showExerciseSheet) {
                 NewExerciseSheet(exercises: $exercises)
             }
-            .sheet(item: $editingExerciseIndex) { identified in
-                EditExerciseSheet(exercise: $exercises[identified.value])
+            .sheet(item: $editingExerciseIndex) { index in
+                EditExerciseSheet(exercise: $exercises[index.value])
             }
         }
     }
