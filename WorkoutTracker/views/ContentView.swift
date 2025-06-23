@@ -8,6 +8,7 @@ struct ContentView: View {
         TabView(selection: $selectedTab) {
             NavigationView{
                 HomeView(workouts: $store.workouts)
+                    .navigationTitle("Oversikt")
                 
             }
             .tabItem {
