@@ -80,108 +80,113 @@ struct HomeView: View {
 
     var body: some View {
         NavigationView {
-            ScrollView {
-                VStack(spacing: 40) {
-                    VStack(alignment: .leading, spacing: 4) {
-                                           Text("\(greeting), Johannes!")
-                                               .font(.largeTitle)
-                                               .bold()
-                                           Text(Date(), style: .date)
-                                               .font(.subheadline)
-                                               .foregroundColor(.secondary)
-                                       }
-                                       .frame(maxWidth: .infinity, alignment: .leading)
-                                       .padding(.horizontal, 16)
-                                       .padding(.top, 16)
-                    
-                    
-                    Card {
-                        HStack(spacing: 32) {
-                            MetricView(
-                                icon: "square.stack.3d.up.fill",
-                                title: "Totalt sett",
-                                value: "\(totalSets)")
-                            MetricView(
-                                icon: "repeat",
-                                title: "Totalt reps",
-                                value: "\(totalReps)")
-                            MetricView(
-                                icon: "scalemass",
-                                title: "Totalt vekt",
-                                value: String(format: "%.1f kg", totalWeight))
+            ZStack {
+                // 1) Fyll hele skjermen med gradient-bakgrunn
+                LinearGradient(
+                    colors: [Color.accentColor.opacity(0.4),
+                             Color.accentColor.opacity(0.1)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .ignoresSafeArea()   // dekker hele skjermen
+
+                // 2) Alt det scrollbare innholdet
+                ScrollView {
+                    VStack(spacing: 20) {
+                        // Litt luft øverst
+                        
+
+                        // Din personlige hilsen
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("\(greeting), Johannes!")
+                                .font(.largeTitle).bold()
+                                .foregroundColor(.white)
+                            Text(Date(), style: .date)
+                                .font(.subheadline)
+                                .foregroundColor(.white.opacity(0.6))
                         }
-                    }
+                        .padding(.horizontal, 24)
 
-                
-
-                    // Mini-graf over siste 7 dager
-                    Card {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Økter siste 7 dager")
-                                .font(.headline)
-                            MiniChart(data: last7days, labels: last7daysLabels)
-                                .frame(height: 80)
-                        }
-                    }
-
-                    // Hurtigvalg som grid
-                    Card {
-                        LazyVGrid(columns: gridColumns, spacing: 16) {
-                            QuickActionButton(icon: "plus.circle", title: "Ny økt") {
-                                showAddWorkout = true
-                            }
-                            NavigationLink {
-                                WorkoutListView(workouts: $workouts)
-                            } label: {
-                                QuickActionLabel(icon: "clock.arrow.circlepath", title: "Historikk")
-                            }
-                            QuickActionButton(icon: "calendar", title: "Kalender") {
-                                // TODO: Naviger til kalender
-                            }
-                            QuickActionButton(icon: "chart.bar", title: "Statistikk") {
-                                // TODO: Naviger til statistikk
+                        // Metrics‐kort
+                        Card {
+                            HStack(spacing: 32) {
+                                MetricView(icon: "square.stack.3d.up.fill",
+                                           title: "Totalt sett",
+                                           value: "\(totalSets)")
+                                MetricView(icon: "repeat",
+                                           title: "Totalt reps",
+                                           value: "\(totalReps)")
+                                MetricView(icon: "scalemass",
+                                           title: "Totalt vekt",
+                                           value: String(format: "%.1f kg", totalWeight))
                             }
                         }
-                    }
 
-                    // Siste økter
-                    Card {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Siste økter")
-                                .font(.headline)
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 12) {
-                                    ForEach(recentWorkouts) { workout in
-                                        VStack(alignment: .leading, spacing: 4) {
-                                            Text(workout.type)
-                                                .font(.subheadline)
-                                                .bold()
-                                            Text(workout.date, style: .date)
-                                                .font(.caption)
-                                                .foregroundColor(.secondary)
+                        // Mini‐graf
+                        Card {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Økter siste 7 dager")
+                                    .font(.headline)
+                                MiniChart(data: last7days, labels: last7daysLabels)
+                                    .frame(height: 120)
+                            }
+                        }
+
+                        // Hurtigvalg‐grid
+                        Card {
+                            LazyVGrid(columns: gridColumns, spacing: 16) {
+                                QuickActionButton(icon: "plus.circle", title: "Ny økt") {
+                                    showAddWorkout = true
+                                }
+                                NavigationLink {
+                                    WorkoutListView(workouts: $workouts)
+                                } label: {
+                                    QuickActionLabel(icon: "clock.arrow.circlepath",
+                                                     title: "Historikk")
+                                }
+                                QuickActionButton(icon: "calendar", title: "Kalender") { }
+                                QuickActionButton(icon: "chart.bar", title: "Statistikk") { }
+                            }
+                        }
+
+                        // Siste økter‐kort
+                        Card {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Siste økter")
+                                    .font(.headline)
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    HStack(spacing: 12) {
+                                        ForEach(recentWorkouts) { workout in
+                                            VStack(alignment: .leading, spacing: 4) {
+                                                Text(workout.type)
+                                                    .font(.subheadline).bold()
+                                                Text(workout.date, style: .date)
+                                                    .font(.caption)
+                                                    .foregroundColor(.secondary)
+                                            }
+                                            .padding()
+                                            .background(Color(.systemBackground))
+                                            .cornerRadius(10)
+                                            .shadow(color: Color(.black).opacity(0.05),
+                                                    radius: 2, x: 0, y: 1)
                                         }
-                                        .padding()
-                                        .background(Color(.systemBackground))
-                                        .cornerRadius(10)
-                                        .shadow(color: Color(.black).opacity(0.05), radius: 2, x: 0, y: 1)
                                     }
                                 }
                             }
                         }
                     }
-
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 24)
                 }
-                .padding(.horizontal, 16)    
-                .padding(.top, 16)
             }
-        
-            
-            
+            .navigationBarHidden(true)
             .sheet(isPresented: $showAddWorkout) {
                 AddWorkoutView(workouts: $workouts)
             }
         }
     }
+
+
 }
 
 
