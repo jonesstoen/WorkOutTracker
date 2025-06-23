@@ -7,6 +7,7 @@ struct AddWorkoutView: View {
     @State private var type = ""
     @State private var category: WorkoutCategory = .strength
     @State private var exercises: [Exercise] = []
+    @State private var notes = ""
 
     @State private var showExerciseSheet = false
     @State private var editingExerciseIndex: IdentifiableInt? = nil
@@ -45,6 +46,15 @@ struct AddWorkoutView: View {
                         Label("Legg til øvelse", systemImage: "plus.circle")
                     }
                 }
+                Section(header: Text("Notater")) {            // ← ny seksjon
+                                   TextEditor(text: $notes)
+                                       .frame(minHeight: 100)
+                                       .padding(4)
+                                       .overlay(
+                                           RoundedRectangle(cornerRadius: 8)
+                                               .stroke(Color.secondary.opacity(0.5))
+                                       )
+                               }
             }
             .navigationTitle("Ny økt")
             .toolbar {
@@ -53,7 +63,7 @@ struct AddWorkoutView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Lagre") {
-                        let newWorkout = Workout(date: .now, type: type, category: category, exercises: exercises)
+                        let newWorkout = Workout(date: .now, type: type, category: category, exercises: exercises, notes: notes   )
                         workouts.append(newWorkout)
                         dismiss()
                     }

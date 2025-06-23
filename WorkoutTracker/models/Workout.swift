@@ -7,15 +7,25 @@ struct Workout: Identifiable, Codable, Equatable {
     var type: String
     var category: WorkoutCategory
     var exercises: [Exercise]
+    var notes: String     // ← ny
 
-    init(id: UUID = UUID(), date: Date, type: String, category: WorkoutCategory, exercises: [Exercise]) {
+    init(
+        id: UUID = UUID(),
+        date: Date,
+        type: String,
+        category: WorkoutCategory,
+        exercises: [Exercise],
+        notes: String = ""  // ← default
+    ) {
         self.id = id
         self.date = date
         self.type = type
         self.category = category
         self.exercises = exercises
+        self.notes = notes
     }
 }
+
 
 enum WorkoutCategory: String, CaseIterable, Identifiable, Codable {
     case strength = "Styrke"
