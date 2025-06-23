@@ -5,6 +5,27 @@ import SwiftUI
 struct HomeView: View {
     @Binding var workouts: [Workout]
     @State private var showAddWorkout = false
+    
+    // Totalt antall sett
+        private var totalSets: Int {
+            workouts.reduce(0) { sum, workout in
+                sum + workout.exercises.reduce(0) { $0 + $1.sets }
+            }
+        }
+    // Totalt antall reps (sets * reps)
+        private var totalReps: Int {
+            workouts.reduce(0) { sum, workout in
+                sum + workout.exercises.reduce(0) { $0 + ($1.sets * $1.reps) }
+            }
+        }
+    // Total vekt løftet (sets * reps * weight)
+        private var totalWeight: Double {
+            workouts.reduce(0) { sum, workout in
+                sum + workout.exercises.reduce(0) {
+                    $0 + (Double($1.sets * $1.reps) * $1.weight)
+                }
+            }
+        }
 
     // Beregn antall økter denne uken
     private var workoutsThisWeek: Int {
@@ -51,7 +72,25 @@ struct HomeView: View {
     var body: some View {
         NavigationView {
             ScrollView {
-                VStack(spacing: 20) {
+                VStack(spacing: 40) {
+                    
+                    
+                    Card {
+                        HStack(spacing: 32) {
+                            MetricView(
+                                icon: "square.stack.3d.up.fill",
+                                title: "Totalt sett",
+                                value: "\(totalSets)")
+                            MetricView(
+                                icon: "repeat",
+                                title: "Totalt reps",
+                                value: "\(totalReps)")
+                            MetricView(
+                                icon: "scalemass",
+                                title: "Totalt vekt",
+                                value: String(format: "%.1f kg", totalWeight))
+                        }
+                    }
 
                 
 
@@ -112,18 +151,12 @@ struct HomeView: View {
                     }
 
                 }
-                .padding()
+                .padding(.horizontal, 16)    
+                .padding(.top, 16)
             }
         
             
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: { showAddWorkout = true }) {
-                        Image(systemName: "plus")
-                    }
-                    .accessibilityLabel("Legg til ny økt")
-                }
-            }
+            
             .sheet(isPresented: $showAddWorkout) {
                 AddWorkoutView(workouts: $workouts)
             }
