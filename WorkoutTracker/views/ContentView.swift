@@ -2,10 +2,18 @@ import SwiftUI
 
 struct ContentView: View {
     @StateObject private var store = WorkoutStore()
-    @State private var selectedTab = 0
+    @State private var selectedTab = 2
 
     var body: some View {
         TabView(selection: $selectedTab) {
+            NavigationView{
+                HomeView(workouts: $store.workouts)
+                
+            }
+            .tabItem {
+                Label("Home", systemImage: "house")
+            }
+            .tag(2)
             NavigationView {
                 WorkoutListView(workouts: $store.workouts)
                     .navigationTitle("Mine Økter")
@@ -23,6 +31,7 @@ struct ContentView: View {
                 Label("Kalender", systemImage: "calendar")
             }
             .tag(1)
+            
         }
     }
 }
