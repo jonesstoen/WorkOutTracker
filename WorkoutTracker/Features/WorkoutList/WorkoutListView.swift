@@ -11,23 +11,43 @@ struct WorkoutListView: View {
     }
 
     var body: some View {
-        List {
-            ForEach(vm.sections, id: \.self) { week in
-                Section(header: Text(week).font(.headline)) {
-                    ForEach(vm.groupedWorkouts[week]!) { workout in
-                        NavigationLink(destination: WorkoutDetailView(workout: workout)) {
-                            workoutCard(for: workout)
+        Group {
+            if vm.workouts.isEmpty {
+                // Placeholder når det ikke finnes økter
+                VStack(spacing: 16) {
+                    Image(systemName: "tray")
+                        .font(.largeTitle)
+                        .foregroundColor(.secondary)
+                    Text("Ingen økter enda")
+                        .font(.headline)
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .navigationTitle("Mine økter")
+            } else {
+                // Vanlig liste med økter gruppert per uke
+                List {
+                    ForEach(vm.sections, id: \.self) { week in
+                        Section(header: Text(week).font(.headline)) {
+                            ForEach(vm.groupedWorkouts[week]!) { workout in
+                                NavigationLink(destination: WorkoutDetailView(workout: workout)) {
+                                    workoutCard(for: workout)
+                                }
+                            }
+                            .onDelete { vm.delete(at: $0, in: week) }
                         }
                     }
-                    .onDelete { vm.delete(at: $0, in: week) }
                 }
+                .listStyle(.plain)
+                .navigationTitle("Mine økter")
             }
         }
-        .listStyle(.plain)
-        .navigationTitle("Mine økter")
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
-                EditButton()
+                // Kun mulig når det finnes økter
+                if !vm.workouts.isEmpty {
+                    EditButton()
+                }
             }
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button { showAddWorkout = true } label: {
@@ -56,7 +76,7 @@ struct WorkoutListView: View {
                     .foregroundColor(.secondary)
 
                 if workout.exercises.isEmpty {
-                    Text("(Ingen øvelser)")
+                    Text("Ingen øvelser")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 } else {
