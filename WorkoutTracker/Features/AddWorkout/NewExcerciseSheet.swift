@@ -1,12 +1,13 @@
 import SwiftUI
 
 struct NewExerciseSheet: View {
-    @Environment(\.dismiss) var dismiss
+    @Environment(\.dismiss) private var dismiss
     @Binding var exercises: [Exercise]
 
-    private let predefinedExercises: [String] = ["Benkpress", "Nedtrekk"]
+    @StateObject private var vm = ExercisesViewModel()
 
-    @State private var customExercises: [String] = []
+    private let predefinedExercises = ["Benkpress", "Nedtrekk"]
+
     @State private var name = ""
     @State private var sets = 3
     @State private var reps = 10
@@ -14,14 +15,15 @@ struct NewExerciseSheet: View {
     @State private var newCustomExercise = ""
     @State private var showEditSheet = false
 
-    var allExercises: [String] {
-        predefinedExercises + customExercises
+    // Alle valg — kombinasjon av forhåndsdefinerte + egendefinerte
+    private var allExercises: [String] {
+        predefinedExercises + vm.exercises
     }
 
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Velg eller skriv inn øvelse")) {
+                Section("Velg eller skriv inn øvelse") {
                     Picker("Velg øvelse", selection: $name) {
                         Text("Egendefinert").tag("")
                         ForEach(allExercises, id: \.self) {
@@ -30,28 +32,30 @@ struct NewExerciseSheet: View {
                     }
                     .pickerStyle(.menu)
 
-                    TextField("Eller skriv ny øvelse", text: $newCustomExercise)
-
-                    Button("Legg til egendefinert øvelse") {
-                        let trimmed = newCustomExercise.trimmingCharacters(in: .whitespaces)
-                        guard !trimmed.isEmpty else { return }
-                        if !customExercises.contains(trimmed) && !predefinedExercises.contains(trimmed) {
-                            customExercises.append(trimmed)
-                            name = trimmed
+                    HStack {
+                        TextField("Skriv inn ny øvelse", text: $newCustomExercise)
+                        Button {
+                            vm.add(newCustomExercise)
+                            name = newCustomExercise
                             newCustomExercise = ""
-                            saveCustomExercises()
+                        } label: {
+                            Image(systemName: "plus.circle.fill")
                         }
+                        .disabled(newCustomExercise.trimmingCharacters(in: .whitespaces).isEmpty)
                     }
                 }
 
-                Section(header: Text("Detaljer")) {
+                Section("Detaljer") {
                     Stepper("Sett: \(sets)", value: $sets, in: 1...10)
                     Stepper("Reps: \(reps)", value: $reps, in: 1...30)
                     TextField("Vekt (kg)", value: $weight, format: .number)
                         .keyboardType(.decimalPad)
                 }
-                Button("Rediger egendefinerte øvelser") {
-                    showEditSheet = true
+
+                Section {
+                    Button("Rediger egendefinerte øvelser") {
+                        showEditSheet = true
+                    }
                 }
             }
             .navigationTitle("Ny øvelse")
@@ -69,22 +73,14 @@ struct NewExerciseSheet: View {
                 }
             }
             .onAppear {
-                loadCustomExercises()
+                // Sett default navn til første i listen
                 if name.isEmpty {
                     name = allExercises.first ?? ""
                 }
             }
+            .sheet(isPresented: $showEditSheet) {
+                EditCustomExercisesView(vm: vm)
+            }
         }
-        .sheet(isPresented: $showEditSheet) {
-            EditCustomExercisesView(customExercises: $customExercises)
-        }
-    }
-
-    private func saveCustomExercises() {
-        UserDefaults.standard.set(customExercises, forKey: "customExercises")
-    }
-
-    private func loadCustomExercises() {
-        customExercises = UserDefaults.standard.stringArray(forKey: "customExercises") ?? []
     }
 }

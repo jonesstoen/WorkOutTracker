@@ -1,26 +1,19 @@
 import Foundation
+import Combine
 
-class WorkoutStore: ObservableObject {
+final class WorkoutStore: ObservableObject {
     @Published var workouts: [Workout] = [] {
-        didSet { save() }
-    }
-
-    private let saveKey = "saved_workouts"
-
-    init() {
-        load()
-    }
-
-    private func save() {
-        if let encoded = try? JSONEncoder().encode(workouts) {
-            UserDefaults.standard.set(encoded, forKey: saveKey)
+        didSet {
+            persistence.saveWorkouts(workouts)
         }
     }
 
-    private func load() {
-        if let data = UserDefaults.standard.data(forKey: saveKey),
-           let decoded = try? JSONDecoder().decode([Workout].self, from: data) {
-            workouts = decoded
-        }
+    private let persistence: PersistenceService
+
+    /// Lar deg bytte ut lagringslag (f.eks. CoreData) enklere
+    init(persistence: PersistenceService = UserDefaultsPersistence()) {
+        self.persistence = persistence
+        // Last inn fra service
+        self.workouts = persistence.loadWorkouts()
     }
 }

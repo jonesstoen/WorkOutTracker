@@ -28,7 +28,7 @@ struct ContentView: View {
 
             // ————————————— Kalender —————————————
             NavigationView {
-                CalendarWorkoutView(workouts: $store.workouts)
+                CalendarWorkoutView(store: store)
                     .navigationTitle("Kalender")
             }
             .tabItem {
