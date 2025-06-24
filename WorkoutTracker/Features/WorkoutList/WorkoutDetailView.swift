@@ -5,20 +5,26 @@ struct WorkoutDetailView: View {
 
     var body: some View {
         List {
-            // Øvelser
+            // Øvelser‐seksjon
             Section(header: Text("Øvelser")) {
-                ForEach(workout.exercises) { exercise in
+                ForEach(workout.exercises) { ex in
+                    // Formater vekten før Text‐kallet
+                    let weightString = String(format: "%.1f", ex.weight)
+
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(exercise.name)
+                        Text(ex.name)
                             .font(.headline)
-                        Text("Sett: \(exercise.sets), Reps: \(exercise.reps), Vekt: \(exercise.weight, specifier: "%.1f") kg")
+
+                        // Nå slipper vi å escape anførselstegn
+                        Text("Sett: \(ex.sets), Reps: \(ex.reps), Vekt: \(weightString) kg")
                             .font(.subheadline)
+                            .foregroundColor(.secondary)
                     }
                     .padding(.vertical, 4)
                 }
             }
 
-            // Notater (kun om det finnes)
+            // Notater‐seksjon (vises kun om notater finnes)
             if !workout.notes.isEmpty {
                 Section(header: Text("Notater")) {
                     Text(workout.notes)
@@ -27,6 +33,6 @@ struct WorkoutDetailView: View {
             }
         }
         .listStyle(InsetGroupedListStyle())
-        .navigationTitle(workout.type)
+        .navigationTitle(workout.type.capitalized)
     }
 }

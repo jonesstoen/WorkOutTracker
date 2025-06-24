@@ -1,31 +1,25 @@
 import SwiftUI
 
 struct WorkoutListView: View {
-    // I stedet for å binde på en array så tar vi inn hele butikken
-    @ObservedObject var store: WorkoutStore
-    @State private var showAddWorkout = false
+    @ObservedObject private var store: WorkoutStore
+    @StateObject   private var vm: WorkoutListViewModel
+    @State         private var showAddWorkout = false
 
-    // Nå grupperer vi på store.workouts
-    private var groupedWorkouts: [String: [Workout]] {
-        Dictionary(grouping: store.workouts) { workout in
-            let weekOfYear = Calendar.current.component(.weekOfYear, from: workout.date)
-            let year = Calendar.current.component(.yearForWeekOfYear, from: workout.date)
-            return "Uke \(weekOfYear), \(year)"
-        }
+    init(store: WorkoutStore) {
+        self._store = ObservedObject(wrappedValue: store)
+        self._vm    = StateObject(wrappedValue: WorkoutListViewModel(store: store))
     }
 
     var body: some View {
         List {
-            ForEach(groupedWorkouts.keys.sorted(by: >), id: \.self) { weekKey in
-                Section(header: Text(weekKey).font(.headline)) {
-                    ForEach(groupedWorkouts[weekKey]!) { workout in
+            ForEach(vm.sections, id: \.self) { week in
+                Section(header: Text(week).font(.headline)) {
+                    ForEach(vm.groupedWorkouts[week]!) { workout in
                         NavigationLink(destination: WorkoutDetailView(workout: workout)) {
                             workoutCard(for: workout)
                         }
                     }
-                    .onDelete { indexSet in
-                        deleteWorkout(at: indexSet, in: weekKey)
-                    }
+                    .onDelete { vm.delete(at: $0, in: week) }
                 }
             }
         }
@@ -36,21 +30,14 @@ struct WorkoutListView: View {
                 EditButton()
             }
             ToolbarItem(placement: .navigationBarTrailing) {
-                Button(action: { showAddWorkout = true }) {
+                Button { showAddWorkout = true } label: {
                     Label("Ny økt", systemImage: "plus")
                 }
             }
         }
         .sheet(isPresented: $showAddWorkout) {
-            // Starter AddWorkoutView med samme store
             AddWorkoutView(store: store)
         }
-    }
-
-    private func deleteWorkout(at offsets: IndexSet, in weekKey: String) {
-        guard let workoutsInSection = groupedWorkouts[weekKey] else { return }
-        let itemsToDelete = offsets.map { workoutsInSection[$0] }
-        store.workouts.removeAll { itemsToDelete.contains($0) }
     }
 
     @ViewBuilder
