@@ -11,36 +11,30 @@ import Combine
 
 @MainActor
 class AddWorkoutViewModel: ObservableObject {
-    // MARK: - Inputs
-    @Published var type: String = ""
+    @Published var date: Date = .now
+    @Published var type = ""
     @Published var category: WorkoutCategory = .strength
     @Published var exercises: [Exercise] = []
-    @Published var notes: String = ""
+    @Published var notes = ""
 
     @Published var showExerciseSheet = false
-    @Published var editingExerciseIndex: IdentifiableInt? = nil
+    @Published var editingExerciseIndex: IdentifiableInt?
 
-    // MARK: - Avhengighet til lagring
     private let store: WorkoutStore
+    init(store: WorkoutStore) { self.store = store }
 
-    init(store: WorkoutStore) {
-        self.store = store
-    }
-
-    // MARK: - Validering
     var isSaveDisabled: Bool {
         type.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
-    // MARK: - Handlinger
     func save() {
-        let newWorkout = Workout(
-            date: .now,
-            type: type,
+        let workout = Workout(
+            date: date,
+            type: type.trimmingCharacters(in: .whitespacesAndNewlines),
             category: category,
             exercises: exercises,
-            notes: notes
+            notes: notes.trimmingCharacters(in: .whitespacesAndNewlines)
         )
-        store.workouts.append(newWorkout)
+        store.workouts.append(workout)
     }
 }
