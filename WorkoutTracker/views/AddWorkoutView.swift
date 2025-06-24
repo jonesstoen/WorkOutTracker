@@ -1,24 +1,20 @@
 import SwiftUI
 
 struct AddWorkoutView: View {
-    @Environment(\.dismiss) var dismiss
-    @Binding var workouts: [Workout]
+    @Environment(\.dismiss) private var dismiss
+    @StateObject private var vm: AddWorkoutViewModel
 
-    @State private var type = ""
-    @State private var category: WorkoutCategory = .strength
-    @State private var exercises: [Exercise] = []
-    @State private var notes = ""
-
-    @State private var showExerciseSheet = false
-    @State private var editingExerciseIndex: IdentifiableInt? = nil
+    // Init med WorkoutStore slik at VM kan lagre
+    init(store: WorkoutStore) {
+        _vm = StateObject(wrappedValue: AddWorkoutViewModel(store: store))
+    }
 
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Type og kategori")) {
-                    TextField("F.eks. Push / Bein / Øktnavn", text: $type)
-
-                    Picker("Kategori", selection: $category) {
+                Section("Type og kategori") {
+                    TextField("F.eks. Push / Bein / Øktnavn", text: $vm.type)
+                    Picker("Kategori", selection: $vm.category) {
                         ForEach(WorkoutCategory.allCases) { cat in
                             Label(cat.rawValue, systemImage: cat.iconName)
                                 .tag(cat)
@@ -26,35 +22,42 @@ struct AddWorkoutView: View {
                     }
                 }
 
-                Section(header: Text("Øvelser")) {
-                    ForEach(Array(exercises.enumerated()), id: \.element.id) { index, exercise in
+                Section("Øvelser") {
+                    ForEach(Array(vm.exercises.enumerated()), id: \.element.id) { index, exercise in
+                        // 1) Formater vekten i en egen variabel
+                        let weightString = String(format: "%.1f", exercise.weight)
+
                         VStack(alignment: .leading) {
-                            Text(exercise.name).bold()
-                            Text("Sett: \(exercise.sets), Reps: \(exercise.reps), Vekt: \(exercise.weight, specifier: "%.1f") kg")
+                            Text(exercise.name)
+                                .font(.headline)
+
+                            // 2) Bruk den ferdige strengen i Text
+                            Text("Sett: \(exercise.sets), Reps: \(exercise.reps), Vekt: \(weightString) kg")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
                         }
                         .onTapGesture {
-                            editingExerciseIndex = IdentifiableInt(value: index)
+                            vm.editingExerciseIndex = IdentifiableInt(value: index)
                         }
                     }
-                    .onDelete { indexSet in
-                        exercises.remove(atOffsets: indexSet)
-                    }
+                    .onDelete { vm.exercises.remove(atOffsets: $0) }
 
                     Button {
-                        showExerciseSheet = true
+                        vm.showExerciseSheet = true
                     } label: {
                         Label("Legg til øvelse", systemImage: "plus.circle")
                     }
                 }
-                Section(header: Text("Notater")) {            // ← ny seksjon
-                                   TextEditor(text: $notes)
-                                       .frame(minHeight: 100)
-                                       .padding(4)
-                                       .overlay(
-                                           RoundedRectangle(cornerRadius: 8)
-                                               .stroke(Color.secondary.opacity(0.5))
-                                       )
-                               }
+
+                Section("Notater") {
+                    TextEditor(text: $vm.notes)
+                        .frame(minHeight: 100)
+                        .padding(4)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(Color.secondary.opacity(0.5))
+                        )
+                }
             }
             .navigationTitle("Ny økt")
             .toolbar {
@@ -63,17 +66,19 @@ struct AddWorkoutView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Lagre") {
-                        let newWorkout = Workout(date: .now, type: type, category: category, exercises: exercises, notes: notes   )
-                        workouts.append(newWorkout)
+                        vm.save()
                         dismiss()
                     }
+                    .disabled(vm.isSaveDisabled)
                 }
             }
-            .sheet(isPresented: $showExerciseSheet) {
-                NewExerciseSheet(exercises: $exercises)
+            // Ark for å legge til ny øvelse
+            .sheet(isPresented: $vm.showExerciseSheet) {
+                NewExerciseSheet(exercises: $vm.exercises)
             }
-            .sheet(item: $editingExerciseIndex) { index in
-                EditExerciseSheet(exercise: $exercises[index.value])
+            // Ark for å redigere en øvelse
+            .sheet(item: $vm.editingExerciseIndex) { index in
+                EditExerciseSheet(exercise: $vm.exercises[index.value])
             }
         }
     }

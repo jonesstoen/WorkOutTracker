@@ -1,11 +1,13 @@
 import SwiftUI
 
 struct WorkoutListView: View {
-    @Binding var workouts: [Workout]
+    // I stedet for å binde på en array så tar vi inn hele butikken
+    @ObservedObject var store: WorkoutStore
     @State private var showAddWorkout = false
 
-    var groupedWorkouts: [String: [Workout]] {
-        Dictionary(grouping: workouts) { workout in
+    // Nå grupperer vi på store.workouts
+    private var groupedWorkouts: [String: [Workout]] {
+        Dictionary(grouping: store.workouts) { workout in
             let weekOfYear = Calendar.current.component(.weekOfYear, from: workout.date)
             let year = Calendar.current.component(.yearForWeekOfYear, from: workout.date)
             return "Uke \(weekOfYear), \(year)"
@@ -28,6 +30,7 @@ struct WorkoutListView: View {
             }
         }
         .listStyle(.plain)
+        .navigationTitle("Mine økter")
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
                 EditButton()
@@ -39,16 +42,18 @@ struct WorkoutListView: View {
             }
         }
         .sheet(isPresented: $showAddWorkout) {
-            AddWorkoutView(workouts: $workouts)
+            // Starter AddWorkoutView med samme store
+            AddWorkoutView(store: store)
         }
     }
 
     private func deleteWorkout(at offsets: IndexSet, in weekKey: String) {
         guard let workoutsInSection = groupedWorkouts[weekKey] else { return }
         let itemsToDelete = offsets.map { workoutsInSection[$0] }
-        workouts.removeAll { itemsToDelete.contains($0) }
+        store.workouts.removeAll { itemsToDelete.contains($0) }
     }
 
+    @ViewBuilder
     private func workoutCard(for workout: Workout) -> some View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: workout.category.iconName)
