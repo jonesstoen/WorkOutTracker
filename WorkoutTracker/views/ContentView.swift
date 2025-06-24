@@ -18,7 +18,7 @@ struct ContentView: View {
 
             // ————————————— Liste —————————————
             NavigationView {
-                WorkoutListView(workouts: $store.workouts)
+                WorkoutListView(store: store)
                     .navigationTitle("Mine Økter")
             }
             .tabItem {

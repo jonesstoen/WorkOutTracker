@@ -91,7 +91,7 @@ struct HomeView: View {
 
                             NavigationLink {
                                 // 4) Bruk binding mot store.workouts
-                                WorkoutListView(workouts: $store.workouts)
+                                WorkoutListView(store: store)
                             } label: {
                                 QuickActionLabel(
                                     icon: "clock.arrow.circlepath",
@@ -140,7 +140,7 @@ struct HomeView: View {
         }
         // 5) Modal for å legge til økt, binder også til store.workouts
         .sheet(isPresented: $showAddWorkout) {
-            AddWorkoutView(workouts: $store.workouts)
+            AddWorkoutView(store: store)
         }
     }
 }
