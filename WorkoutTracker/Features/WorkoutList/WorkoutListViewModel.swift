@@ -1,10 +1,8 @@
+// WorkoutListViewModel.swift
+// WorkoutTracker
 //
-//  WorkoutListViewModel.swift
-//  WorkoutTracker
+// Created by Johannes Støen on 24/06/2025.
 //
-//  Created by Johannes Støen on 24/06/2025.
-//
-
 
 import SwiftUI
 import Combine
@@ -25,24 +23,45 @@ class WorkoutListViewModel: ObservableObject {
             .store(in: &cancellables)
     }
 
-    // Gruppér øktene per uke
-    var groupedWorkouts: [String: [Workout]] {
-        Dictionary(grouping: workouts) { workout in
-            let cal = Calendar.current
-            let week = cal.component(.weekOfYear, from: workout.date)
-            let year = cal.component(.yearForWeekOfYear, from: workout.date)
-            return "Uke \(week), \(year)"
+    /// Hjelpe‐type for (år, uke), gir Hashable‐støtte
+    private struct YearWeek: Hashable {
+        let year: Int
+        let week: Int
+    }
+
+    /// Seksjoner gruppert og sortert etter år og uke
+    var sections: [(title: String, workouts: [Workout])] {
+        let calendar = Calendar.current
+
+        // 1) Gruppér på YearWeek
+        let grouped = Dictionary(grouping: workouts) { workout -> YearWeek in
+            let week = calendar.component(.weekOfYear, from: workout.date)
+            let year = calendar.component(.yearForWeekOfYear, from: workout.date)
+            return YearWeek(year: year, week: week)
+        }
+
+        // 2) Sortér nøklene synkende etter år, så uke
+        let sortedKeys = grouped.keys.sorted { lhs, rhs in
+            if lhs.year != rhs.year {
+                return lhs.year > rhs.year
+            } else {
+                return lhs.week > rhs.week
+            }
+        }
+
+        // 3) Bygg array av seksjoner med tittel og sorterte økter
+        return sortedKeys.map { key in
+            let title = "Uke \(key.week), \(key.year)"
+            let items = grouped[key]!.sorted { $0.date > $1.date }
+            return (title: title, workouts: items)
         }
     }
 
-    // Sorterte seksjonsnøkler (uker)
-    var sections: [String] {
-        groupedWorkouts.keys.sorted(by: >)
-    }
-
-    // Sletting
-    func delete(at offsets: IndexSet, in section: String) {
-        guard let sectionWorkouts = groupedWorkouts[section] else { return }
+    /// Slett økter i en gitt seksjon
+    func delete(at offsets: IndexSet, in sectionTitle: String) {
+        // Finn workshops for seksjonen
+        guard let sectionWorkouts = sections.first(where: { $0.title == sectionTitle })?.workouts
+        else { return }
         let toDelete = offsets.map { sectionWorkouts[$0] }
         store.workouts.removeAll { toDelete.contains($0) }
     }

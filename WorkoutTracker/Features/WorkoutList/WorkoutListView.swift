@@ -27,16 +27,16 @@ struct WorkoutListView: View {
             } else {
                 // Vanlig liste med økter gruppert per uke
                 List {
-                    ForEach(vm.sections, id: \.self) { week in
-                        Section(header: Text(week).font(.headline)) {
-                            ForEach(vm.groupedWorkouts[week]!) { workout in
-                                NavigationLink(destination: WorkoutDetailView(workout: workout)) {
-                                    workoutCard(for: workout)
-                                }
-                            }
-                            .onDelete { vm.delete(at: $0, in: week) }
+                  ForEach(vm.sections, id: \.title) { section in
+                    Section(header: Text(section.title)) {
+                      ForEach(section.workouts) { workout in
+                        NavigationLink(destination: WorkoutDetailView(workout: workout)) {
+                          workoutCard(for: workout)
                         }
+                      }
+                      .onDelete { vm.delete(at: $0, in: section.title) }
                     }
+                  }
                 }
                 .listStyle(.plain)
                 .navigationTitle("Mine økter")
