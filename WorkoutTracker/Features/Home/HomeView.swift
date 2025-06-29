@@ -1,30 +1,30 @@
+//
+// HomeView.swift
+// WorkoutTracker
+//
+// Updated by Johannes Støen on 29/06/2025.
+//
+
 import SwiftUI
 
 struct HomeView: View {
-    // 1) ObservableObject som eier listen og tillater binding
     @ObservedObject private var store: WorkoutStore
-
-    // 2) ViewModel for all readonly-logikk
-    @StateObject private var vm: HomeViewModel
+    @StateObject   private var vm: HomeViewModel
 
     @State private var showAddWorkout = false
-
-    // 3) Lokalt grid-oppsett
     private let gridColumns = [
-        GridItem(.flexible()),
-        GridItem(.flexible())
+        GridItem(.flexible()), GridItem(.flexible())
     ]
+    @State private var chartRange = 7    // enten 7 eller 30 dager
 
     init(store: WorkoutStore) {
-        // Init av ObservedObject
         self._store = ObservedObject(wrappedValue: store)
-        // Init av StateObject
-        self._vm = StateObject(wrappedValue: HomeViewModel(store: store))
+        self._vm    = StateObject(wrappedValue: HomeViewModel(store: store))
     }
 
     var body: some View {
         ZStack {
-            // Bakgrunnsgradient
+            // Bakgrunnsgradient for hele view
             LinearGradient(
                 colors: [Color.accentColor.opacity(0.4),
                          Color.accentColor.opacity(0.1)],
@@ -36,11 +36,13 @@ struct HomeView: View {
             ScrollView {
                 VStack(spacing: 20) {
                     Spacer().frame(height: 24)
+
+                    // Logo øverst
                     Image("AppLogo")
-                                .resizable()
-                                .scaledToFit()
-                                .frame(height: 40)
-                                .padding(.top, 16)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(height: 40)
+                        .padding(.top, 16)
 
                     // Hilsen
                     VStack(alignment: .leading, spacing: 4) {
@@ -56,34 +58,80 @@ struct HomeView: View {
                     // Metrics‐kort
                     Card {
                         HStack(spacing: 32) {
-                            MetricView(
-                                icon: "square.stack.3d.up.fill",
-                                title: "Totalt sett",
-                                value: "\(vm.totalSets)"
-                            )
-                            MetricView(
-                                icon: "repeat",
-                                title: "Totalt reps",
-                                value: "\(vm.totalReps)"
-                            )
-                            MetricView(
-                                icon: "scalemass",
-                                title: "Totalt vekt",
-                                value: String(format: "%.1f kg", vm.totalWeight)
-                            )
+                            MetricView(icon: "square.stack.3d.up.fill",
+                                       title: "Totalt sett",
+                                       value: "\(vm.totalSets)")
+                            MetricView(icon: "repeat",
+                                       title: "Totalt reps",
+                                       value: "\(vm.totalReps)")
+                            MetricView(icon: "scalemass",
+                                       title: "Totalt vekt",
+                                       value: String(format: "%.1f kg", vm.totalWeight))
                         }
                     }
 
-                    // Mini‐graf
+                    // Graf‐kort med %-indikator og gradient‐bakgrunn
                     Card {
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("Økter siste 7 dager")
-                                .font(.headline)
-                            MiniChart(
-                                data: vm.last7days,
-                                labels: vm.last7daysLabels
+                            // Tittel + segment‐picker
+                            HStack {
+                                Text("Økter siste \(chartRange) dager")
+                                    .font(.headline)
+                                Spacer()
+                                Picker("", selection: $chartRange) {
+                                    Text("7 dager").tag(7)
+                                    Text("30 dager").tag(30)
+                                }
+                                .pickerStyle(.segmented)
+                                .frame(width: 200)
+                            }
+
+                            // %-endring
+                            if let change = vm.percentChange(forLast: chartRange) {
+                                let arrow = change >= 0 ? "arrow.up" : "arrow.down"
+                                let color = change >= 0 ? Color.green : Color.red
+                                HStack(spacing: 4) {
+                                    Image(systemName: arrow)
+                                        .foregroundColor(color)
+                                    Text("\(abs(Int(change))) % fra forrige periode")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+
+                            // Beregn gradient‐bakgrunn basert på trend
+                            let trendColor = (vm.percentChange(forLast: chartRange) ?? 0) >= 0
+                                             ? Color.green : Color.red
+                            let bgGrad = LinearGradient(
+                                gradient: Gradient(colors: [
+                                    trendColor.opacity(0.3),
+                                    trendColor.opacity(0.05)
+                                ]),
+                                startPoint: .top,
+                                endPoint: .bottom
                             )
-                            .frame(height: 120)
+
+                            // Tegn graf
+                            if chartRange == 7 {
+                                MiniChart(
+                                    data: vm.counts(forLast: 7),
+                                    labels: vm.labels(forLast: 7),
+                                    lineColor: trendColor,
+                                    pointColor: trendColor,
+                                    backgroundGradient: bgGrad
+                                )
+                                .frame(height: 120)
+                            } else {
+                                let weekly = vm.weeklyCounts(forLast: 30)
+                                MiniChart(
+                                    data: weekly.counts,
+                                    labels: weekly.labels,
+                                    lineColor: trendColor,
+                                    pointColor: trendColor,
+                                    backgroundGradient: bgGrad
+                                )
+                                .frame(height: 120)
+                            }
                         }
                     }
 
@@ -95,7 +143,6 @@ struct HomeView: View {
                             }
 
                             NavigationLink {
-                                // 4) Bruk binding mot store.workouts
                                 WorkoutListView(store: store)
                             } label: {
                                 QuickActionLabel(
@@ -116,23 +163,20 @@ struct HomeView: View {
                                 .font(.headline)
                             ScrollView(.horizontal, showsIndicators: false) {
                                 HStack(spacing: 12) {
-                                    ForEach(vm.recentWorkouts) { workout in
-                                        // Ditt kjente økt‐kort
+                                    ForEach(vm.recentWorkouts) { w in
                                         VStack(alignment: .leading, spacing: 4) {
-                                            Text(workout.type)
+                                            Text(w.type)
                                                 .font(.subheadline)
                                                 .bold()
-                                            Text(workout.date, style: .date)
+                                            Text(w.date, style: .date)
                                                 .font(.caption)
                                                 .foregroundColor(.secondary)
                                         }
                                         .padding()
                                         .background(Color(.systemBackground))
                                         .cornerRadius(10)
-                                        .shadow(
-                                            color: Color(.black).opacity(0.05),
-                                            radius: 2, x: 0, y: 1
-                                        )
+                                        .shadow(color: Color(.black).opacity(0.05),
+                                                radius: 2, x: 0, y: 1)
                                     }
                                 }
                             }
@@ -143,7 +187,7 @@ struct HomeView: View {
                 .padding(.bottom, 24)
             }
         }
-        // 5) Modal for å legge til økt, binder også til store.workouts
+        // Modal for å legge til økt
         .sheet(isPresented: $showAddWorkout) {
             AddWorkoutView(store: store)
         }
