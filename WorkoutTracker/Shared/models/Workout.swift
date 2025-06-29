@@ -31,25 +31,39 @@ enum WorkoutCategory: String, CaseIterable, Identifiable, Codable {
     case strength = "Styrke"
     case cardio = "Kondisjon"
     case yoga = "Yoga"
+    case walking = "Gange"
+    case running = "Løping"
+    case cycling = "Sykling"
+    case swimming = "Svømming"
     case other = "Annet"
 
-    var id: String { self.rawValue }
+    var id: String { rawValue }
 
+    /// Farge for kategori
     var color: Color {
         switch self {
-        case .strength: return .red
-        case .cardio: return .blue
-        case .yoga: return .green
-        case .other: return .gray
+        case .strength:  return .red
+        case .cardio:    return .blue
+        case .yoga:      return .green
+        case .walking:   return .teal
+        case .running:   return .orange
+        case .cycling:   return .purple
+        case .swimming:  return .cyan
+        case .other:     return .gray
         }
     }
 
+    /// SF Symbols for kategori
     var iconName: String {
         switch self {
-        case .strength: return "dumbbell"
-        case .cardio: return "heart.fill"
-        case .yoga: return "figure.cooldown"
-        case .other: return "questionmark.circle"
+        case .strength:  return "dumbbell"
+        case .cardio:    return "heart.fill"
+        case .yoga:      return "figure.cooldown"
+        case .walking:   return "figure.walk"
+        case .running:   return "figure.run"
+        case .cycling:   return "bicycle"
+        case .swimming:  return "figure.pool.swim"
+        case .other:     return "questionmark.circle"
         }
     }
 }

@@ -1,17 +1,13 @@
-//
-//  WorkoutTrackerApp.swift
-//  WorkoutTracker
-//
-//  Created by Johannes Støen on 22/06/2025.
-//
-
 import SwiftUI
 
 @main
 struct WorkoutTrackerApp: App {
+    @StateObject private var store = WorkoutStore()
+
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            ContentView(store: store)
+                
         }
     }
 }
