@@ -36,6 +36,11 @@ struct HomeView: View {
             ScrollView {
                 VStack(spacing: 20) {
                     Spacer().frame(height: 24)
+                    Image("AppLogo")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(height: 40)
+                                .padding(.top, 16)
 
                     // Hilsen
                     VStack(alignment: .leading, spacing: 4) {
