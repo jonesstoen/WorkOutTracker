@@ -1,9 +1,9 @@
 # WorkoutTracker
 
-En enkel og personlig iOS-app for å loggføre treningsøkter. Laget for eget bruk med SwiftUI.
+En enkel og personlig iOS app for å loggføre treningsøkter. Laget for eget bruk med SwiftUI.
 
 ## Funksjoner
-
+- HealthKit sync for tilgang til Treningsøkter mm.
 - Legg til og lagre økter med dato og type (Push/Pull/Bein/etc.)
 - Legg til øvelser med sett, reps og vekt
 - Rediger og slett øvelser
@@ -12,9 +12,15 @@ En enkel og personlig iOS-app for å loggføre treningsøkter. Laget for eget br
 - Dark mode-støtte
 - Enkelt og responsivt design tilpasset mobil
 
-## Bruk
+## Skjermbilder fra Appen
 
-Appen er for øyeblikket kun tilgjengelig via Xcode og fungerer på fysisk iPhone.  
+<p align="center">
+  <img src="/WorkoutTracker/GithubAssets/HomeScreenSS.png" alt="Hjemskjerm" width="200">
+  <img src="/WorkoutTracker/GithubAssets/ListViewSS.png" alt="Historikk" width="200">
+  <img src="/WorkoutTracker/GithubAssets/CalendarViewSS.png" alt="Kalender" width="200">
+  <img src="/WorkoutTracker/GithubAssets/NewExceriseSS.png" alt="Legg til øvelse" width="200">
+</p>
+
 
 ## Teknologi
 
@@ -40,4 +46,4 @@ Appen er for øyeblikket kun tilgjengelig via Xcode og fungerer på fysisk iPhon
 
 ---
 
-Laget av Johannes Støen
+Laget av Johannes Støen 2025
