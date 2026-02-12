@@ -20,29 +20,45 @@ final class LiveWorkoutViewModel: ObservableObject {
 
     private var timerCancellable: AnyCancellable?
     private let store: WorkoutStore
+    private var pauseBeganAt: Date?
+    private var totalPaused: TimeInterval = 0
 
     init(store: WorkoutStore, initialType: String = "", initialCategory: WorkoutCategory = .strength) {
         self.store = store
         draft.type = initialType
         draft.category = initialCategory
+        self.isRunning = true
         startTimer()
     }
 
     func startTimer() {
-        isRunning = true
         timerCancellable?.cancel()
         timerCancellable = Timer
             .publish(every: 1, on: .main, in: .common)
             .autoconnect()
             .sink { [weak self] _ in
                 guard let self else { return }
-                guard self.isRunning else { return }
-                self.elapsed = Date().timeIntervalSince(self.draft.startDate)
+
+                let now = Date()
+                let currentPause = self.pauseBeganAt.map { now.timeIntervalSince($0) } ?? 0
+                self.elapsed = now.timeIntervalSince(self.draft.startDate) - (self.totalPaused + currentPause)
             }
     }
 
-    func pause() { isRunning = false }
-    func resume() { isRunning = true }
+    func pause() {
+        guard isRunning else { return }
+        isRunning = false
+        pauseBeganAt = Date()
+    }
+
+    func resume() {
+        guard !isRunning else { return }
+        isRunning = true
+        if let began = pauseBeganAt {
+            totalPaused += Date().timeIntervalSince(began)
+            pauseBeganAt = nil
+        }
+    }
 
     func finish() {
         let workout = Workout(
