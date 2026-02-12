@@ -1,20 +1,16 @@
-//
-// HomeView.swift
-// WorkoutTracker
-//
-// Updated by Johannes Støen on 29/06/2025.
-//
-
 import SwiftUI
 
 struct HomeView: View {
     @ObservedObject private var store: WorkoutStore
-    @StateObject   private var vm: HomeViewModel
+    @StateObject private var vm: HomeViewModel
 
-    @State private var showAddWorkout = false
+    // @State private var showLiveWorkout = false
+    @State private var showManualAdd = false
+
     private let gridColumns = [
         GridItem(.flexible()), GridItem(.flexible())
     ]
+
     @State private var chartRange = 7    // enten 7 eller 30 dager
 
     init(store: WorkoutStore) {
@@ -23,11 +19,14 @@ struct HomeView: View {
     }
 
     var body: some View {
-        ZStack {
+        NavigationStack {
+            ZStack {
             // Bakgrunnsgradient for hele view
             LinearGradient(
-                colors: [Color.accentColor.opacity(0.4),
-                         Color.accentColor.opacity(0.1)],
+                colors: [
+                    Color.accentColor.opacity(0.4),
+                    Color.accentColor.opacity(0.1)
+                ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
@@ -55,20 +54,7 @@ struct HomeView: View {
                     }
                     .padding(.horizontal, 24)
 
-                    // Metrics‐kort
-                    Card {
-                        HStack(spacing: 32) {
-                            MetricView(icon: "square.stack.3d.up.fill",
-                                       title: "Totalt sett",
-                                       value: "\(vm.totalSets)")
-                            MetricView(icon: "repeat",
-                                       title: "Totalt reps",
-                                       value: "\(vm.totalReps)")
-                            MetricView(icon: "scalemass",
-                                       title: "Totalt vekt",
-                                       value: String(format: "%.1f kg", vm.totalWeight))
-                        }
-                    }
+                    
 
                     // Graf‐kort med %-indikator og gradient‐bakgrunn
                     Card {
@@ -101,7 +87,8 @@ struct HomeView: View {
 
                             // Beregn gradient‐bakgrunn basert på trend
                             let trendColor = (vm.percentChange(forLast: chartRange) ?? 0) >= 0
-                                             ? Color.green : Color.red
+                            ? Color.green : Color.red
+
                             let bgGrad = LinearGradient(
                                 gradient: Gradient(colors: [
                                     trendColor.opacity(0.3),
@@ -138,8 +125,16 @@ struct HomeView: View {
                     // Hurtigvalg‐grid
                     Card {
                         LazyVGrid(columns: gridColumns, spacing: 16) {
-                            QuickActionButton(icon: "plus.circle", title: "Ny økt") {
-                                showAddWorkout = true
+                            // Primær: Live økt (egen skjerm)
+                            NavigationLink {
+                                LiveWorkoutSetupView(store: store)
+                            } label: {
+                                QuickActionLabel(icon: "play.circle.fill", title: "Start økt")
+                            }
+
+                            // Sekundær: Manuell logging
+                            QuickActionButton(icon: "plus.circle", title: "Legg til manuelt") {
+                                showManualAdd = true
                             }
 
                             NavigationLink {
@@ -161,6 +156,7 @@ struct HomeView: View {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Siste økter")
                                 .font(.headline)
+
                             ScrollView(.horizontal, showsIndicators: false) {
                                 HStack(spacing: 12) {
                                     ForEach(vm.recentWorkouts) { w in
@@ -175,8 +171,10 @@ struct HomeView: View {
                                         .padding()
                                         .background(Color(.systemBackground))
                                         .cornerRadius(10)
-                                        .shadow(color: Color(.black).opacity(0.05),
-                                                radius: 2, x: 0, y: 1)
+                                        .shadow(
+                                            color: Color(.black).opacity(0.05),
+                                            radius: 2, x: 0, y: 1
+                                        )
                                     }
                                 }
                             }
@@ -187,9 +185,58 @@ struct HomeView: View {
                 .padding(.bottom, 24)
             }
         }
-        // Modal for å legge til økt
-        .sheet(isPresented: $showAddWorkout) {
-            AddWorkoutView(store: store)
+            }
+            // Manual add flow (existing form)
+            .sheet(isPresented: $showManualAdd) {
+                AddWorkoutView(store: store)
+            }
         }
+    }
+
+
+
+/// Setup screen shown before starting a live workout.
+/// Keeps LiveWorkoutView focused on logging during the workout.
+struct LiveWorkoutSetupView: View {
+    @ObservedObject private var store: WorkoutStore
+
+    @State private var type: String = ""
+    @State private var category: WorkoutCategory = .strength
+
+    init(store: WorkoutStore) {
+        self._store = ObservedObject(wrappedValue: store)
+    }
+
+    var body: some View {
+        Form {
+            Section("Type og kategori") {
+                TextField("F.eks. Push / Bein / Øktnavn (valgfritt)", text: $type)
+                    .textInputAutocapitalization(.sentences)
+                    .submitLabel(.done)
+
+                Picker("Kategori", selection: $category) {
+                    ForEach(WorkoutCategory.allCases) { cat in
+                        Label(cat.rawValue, systemImage: cat.iconName).tag(cat)
+                    }
+                }
+                .pickerStyle(.navigationLink)
+            }
+
+            Section {
+                NavigationLink {
+                    LiveWorkoutView(
+                        store: store,
+                        initialType: type.trimmingCharacters(in: .whitespacesAndNewlines),
+                        initialCategory: category
+                    )
+                } label: {
+                    Label("Start økt", systemImage: "play.circle.fill")
+                }
+            } footer: {
+                Text("Du kan endre dette senere underveis, men det er ofte enklere å sette det nå.")
+            }
+        }
+        .navigationTitle("Start økt")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
