@@ -29,9 +29,22 @@
 		157A859C2E08830C00CB540F /* WorkoutTrackerUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = WorkoutTrackerUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
+		1545D5352F3E0E690095B10E /* Exceptions for "WorkoutTracker" folder in "Copy Bundle Resources" phase from "WorkoutTracker" target */ = {
+			isa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;
+			buildPhase = 157A85802E08830800CB540F /* Resources */;
+			membershipExceptions = (
+				"Shared/UIExtensions/WorkoutCategory+Ui.swift",
+			);
+		};
+/* End PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		157A85842E08830800CB540F /* WorkoutTracker */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				1545D5352F3E0E690095B10E /* Exceptions for "WorkoutTracker" folder in "Copy Bundle Resources" phase from "WorkoutTracker" target */,
+			);
 			path = WorkoutTracker;
 			sourceTree = "<group>";
 		};

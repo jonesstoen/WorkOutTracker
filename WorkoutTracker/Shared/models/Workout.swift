@@ -1,5 +1,4 @@
 import Foundation
-import SwiftUI
 
 struct Workout: Identifiable, Codable, Equatable {
     let id: UUID
@@ -7,7 +6,7 @@ struct Workout: Identifiable, Codable, Equatable {
     var type: String
     var category: WorkoutCategory
     var exercises: [Exercise]
-    var notes: String     // ← ny
+    var notes: String
 
     init(
         id: UUID = UUID(),
@@ -15,7 +14,7 @@ struct Workout: Identifiable, Codable, Equatable {
         type: String,
         category: WorkoutCategory,
         exercises: [Exercise],
-        notes: String = ""  // ← default
+        notes: String = ""
     ) {
         self.id = id
         self.date = date
@@ -25,7 +24,6 @@ struct Workout: Identifiable, Codable, Equatable {
         self.notes = notes
     }
 }
-
 
 enum WorkoutCategory: String, CaseIterable, Identifiable, Codable {
     case strength = "Styrke"
@@ -38,32 +36,4 @@ enum WorkoutCategory: String, CaseIterable, Identifiable, Codable {
     case other = "Annet"
 
     var id: String { rawValue }
-
-    /// Farge for kategori
-    var color: Color {
-        switch self {
-        case .strength:  return .red
-        case .cardio:    return .blue
-        case .yoga:      return .green
-        case .walking:   return .teal
-        case .running:   return .orange
-        case .cycling:   return .purple
-        case .swimming:  return .cyan
-        case .other:     return .gray
-        }
-    }
-
-    /// SF Symbols for kategori
-    var iconName: String {
-        switch self {
-        case .strength:  return "dumbbell"
-        case .cardio:    return "heart.fill"
-        case .yoga:      return "figure.cooldown"
-        case .walking:   return "figure.walk"
-        case .running:   return "figure.run"
-        case .cycling:   return "bicycle"
-        case .swimming:  return "figure.pool.swim"
-        case .other:     return "questionmark.circle"
-        }
-    }
 }
