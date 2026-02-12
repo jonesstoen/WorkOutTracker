@@ -4,196 +4,236 @@ struct HomeView: View {
     @ObservedObject private var store: WorkoutStore
     @StateObject private var vm: HomeViewModel
 
-    // @State private var showLiveWorkout = false
     @State private var showManualAdd = false
+    @State private var chartRange = 7
 
     private let gridColumns = [
         GridItem(.flexible()), GridItem(.flexible())
     ]
-
-    @State private var chartRange = 7    // enten 7 eller 30 dager
 
     init(store: WorkoutStore) {
         self._store = ObservedObject(wrappedValue: store)
         self._vm    = StateObject(wrappedValue: HomeViewModel(store: store))
     }
 
+    private var hasWorkoutsInRange: Bool {
+        vm.counts(forLast: chartRange).contains { $0 > 0 }
+    }
+
     var body: some View {
         NavigationStack {
             ZStack {
-            // Bakgrunnsgradient for hele view
-            LinearGradient(
-                colors: [
-                    Color.accentColor.opacity(0.4),
-                    Color.accentColor.opacity(0.1)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
+                // 1) Softere bakgrunn enn før
+                LinearGradient(
+                    colors: [
+                        Color.accentColor.opacity(0.22),
+                        Color.accentColor.opacity(0.06)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .ignoresSafeArea()
 
-            ScrollView {
-                VStack(spacing: 20) {
-                    Spacer().frame(height: 24)
+                ScrollView {
+                    VStack(spacing: 16) {
+                        Spacer().frame(height: 18)
 
-                    // Logo øverst
-                    Image("AppLogo")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(height: 40)
-                        .padding(.top, 16)
+                        Image("AppLogo")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(height: 40)
+                            .padding(.top, 12)
 
-                    // Hilsen
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("\(vm.greeting), Johannes!")
-                            .font(.largeTitle).bold()
-                            .foregroundColor(.white)
-                        Text(vm.dateString)
-                            .font(.subheadline)
-                            .foregroundColor(.white.opacity(0.6))
-                    }
-                    .padding(.horizontal, 24)
+                        // Hilsen
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("\(vm.greeting), Johannes!")
+                                .font(.largeTitle).bold()
+                                .foregroundColor(.white)
 
-                    
+                            Text(vm.dateString)
+                                .font(.subheadline)
+                                .foregroundColor(.white.opacity(0.65))
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 24)
 
-                    // Graf‐kort med %-indikator og gradient‐bakgrunn
-                    Card {
-                        VStack(alignment: .leading, spacing: 8) {
-                            // Tittel + segment‐picker
-                            HStack {
-                                Text("Økter siste \(chartRange) dager")
+                        // 2) Stor “Start økt” som primær CTA
+                        NavigationLink {
+                            LiveWorkoutSetupView(store: store)
+                        } label: {
+                            HStack(spacing: 12) {
+                                Image(systemName: "play.circle.fill")
+                                    .imageScale(.large)
+                                Text("Start økt")
                                     .font(.headline)
                                 Spacer()
-                                Picker("", selection: $chartRange) {
-                                    Text("7 dager").tag(7)
-                                    Text("30 dager").tag(30)
-                                }
-                                .pickerStyle(.segmented)
-                                .frame(width: 200)
+                                Image(systemName: "chevron.right")
+                                    .foregroundStyle(.white.opacity(0.8))
                             }
-
-                            // %-endring
-                            if let change = vm.percentChange(forLast: chartRange) {
-                                let arrow = change >= 0 ? "arrow.up" : "arrow.down"
-                                let color = change >= 0 ? Color.green : Color.red
-                                HStack(spacing: 4) {
-                                    Image(systemName: arrow)
-                                        .foregroundColor(color)
-                                    Text("\(abs(Int(change))) % fra forrige periode")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
-                            }
-
-                            // Beregn gradient‐bakgrunn basert på trend
-                            let trendColor = (vm.percentChange(forLast: chartRange) ?? 0) >= 0
-                            ? Color.green : Color.red
-
-                            let bgGrad = LinearGradient(
-                                gradient: Gradient(colors: [
-                                    trendColor.opacity(0.3),
-                                    trendColor.opacity(0.05)
-                                ]),
-                                startPoint: .top,
-                                endPoint: .bottom
+                            .foregroundStyle(.white)
+                            .padding(.vertical, 16)
+                            .padding(.horizontal, 16)
+                            .background(
+                                LinearGradient(
+                                    colors: [
+                                        Color.accentColor.opacity(0.95),
+                                        Color.accentColor.opacity(0.65)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
                             )
-
-                            // Tegn graf
-                            if chartRange == 7 {
-                                MiniChart(
-                                    data: vm.counts(forLast: 7),
-                                    labels: vm.labels(forLast: 7),
-                                    lineColor: trendColor,
-                                    pointColor: trendColor,
-                                    backgroundGradient: bgGrad
-                                )
-                                .frame(height: 120)
-                            } else {
-                                let weekly = vm.weeklyCounts(forLast: 30)
-                                MiniChart(
-                                    data: weekly.counts,
-                                    labels: weekly.labels,
-                                    lineColor: trendColor,
-                                    pointColor: trendColor,
-                                    backgroundGradient: bgGrad
-                                )
-                                .frame(height: 120)
-                            }
+                            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                            .shadow(color: Color.black.opacity(0.12), radius: 10, x: 0, y: 6)
                         }
-                    }
+                        .padding(.horizontal, 16)
+                        .padding(.top, 6)
 
-                    // Hurtigvalg‐grid
-                    Card {
-                        LazyVGrid(columns: gridColumns, spacing: 16) {
-                            // Primær: Live økt (egen skjerm)
-                            NavigationLink {
-                                LiveWorkoutSetupView(store: store)
-                            } label: {
-                                QuickActionLabel(icon: "play.circle.fill", title: "Start økt")
-                            }
+                        // Chart / “Økter siste X dager”
+                        Card {
+                            VStack(alignment: .leading, spacing: 10) {
+                                HStack {
+                                    Text("Økter siste \(chartRange) dager")
+                                        .font(.headline)
+                                    Spacer()
+                                    Picker("", selection: $chartRange) {
+                                        Text("7 dager").tag(7)
+                                        Text("30 dager").tag(30)
+                                    }
+                                    .pickerStyle(.segmented)
+                                    .frame(width: 200)
+                                }
 
-                            // Sekundær: Manuell logging
-                            QuickActionButton(icon: "plus.circle", title: "Legg til manuelt") {
-                                showManualAdd = true
-                            }
+                                // %-endring (bare hvis det finnes data i perioden)
+                                if hasWorkoutsInRange, let change = vm.percentChange(forLast: chartRange) {
+                                    let arrow = change >= 0 ? "arrow.up" : "arrow.down"
+                                    let color = change >= 0 ? Color.green : Color.red
+                                    HStack(spacing: 6) {
+                                        Image(systemName: arrow).foregroundColor(color)
+                                        Text("\(abs(Int(change))) % fra forrige periode")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                }
 
-                            NavigationLink {
-                                WorkoutListView(store: store)
-                            } label: {
-                                QuickActionLabel(
-                                    icon: "clock.arrow.circlepath",
-                                    title: "Historikk"
-                                )
-                            }
+                                // 3) Tom-state i stedet for flat null-graf
+                                if !hasWorkoutsInRange {
+                                    ContentUnavailableView(
+                                        "Ingen økter denne perioden",
+                                        systemImage: "chart.line.downtrend.xyaxis",
+                                        description: Text("Start en økt for å komme i gang.")
+                                    )
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 8)
+                                } else {
+                                    let trendColor = (vm.percentChange(forLast: chartRange) ?? 0) >= 0
+                                    ? Color.green : Color.red
 
-                            QuickActionButton(icon: "calendar", title: "Kalender") { }
-                            QuickActionButton(icon: "chart.bar", title: "Statistikk") { }
-                        }
-                    }
+                                    let bgGrad = LinearGradient(
+                                        gradient: Gradient(colors: [
+                                            trendColor.opacity(0.28),
+                                            trendColor.opacity(0.06)
+                                        ]),
+                                        startPoint: .top,
+                                        endPoint: .bottom
+                                    )
 
-                    // Siste økter‐kort
-                    Card {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Siste økter")
-                                .font(.headline)
-
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 12) {
-                                    ForEach(vm.recentWorkouts) { w in
-                                        VStack(alignment: .leading, spacing: 4) {
-                                            Text(w.type)
-                                                .font(.subheadline)
-                                                .bold()
-                                            Text(w.date, style: .date)
-                                                .font(.caption)
-                                                .foregroundColor(.secondary)
-                                        }
-                                        .padding()
-                                        .background(Color(.systemBackground))
-                                        .cornerRadius(10)
-                                        .shadow(
-                                            color: Color(.black).opacity(0.05),
-                                            radius: 2, x: 0, y: 1
+                                    if chartRange == 7 {
+                                        MiniChart(
+                                            data: vm.counts(forLast: 7),
+                                            labels: vm.labels(forLast: 7),
+                                            lineColor: trendColor,
+                                            pointColor: trendColor,
+                                            backgroundGradient: bgGrad
                                         )
+                                        .frame(height: 120)
+                                    } else {
+                                        let weekly = vm.weeklyCounts(forLast: 30)
+                                        MiniChart(
+                                            data: weekly.counts,
+                                            labels: weekly.labels,
+                                            lineColor: trendColor,
+                                            pointColor: trendColor,
+                                            backgroundGradient: bgGrad
+                                        )
+                                        .frame(height: 120)
                                     }
                                 }
                             }
                         }
+
+                        // Hurtigvalg-grid (uten “Start økt” her, siden den er primær CTA over)
+                        Card {
+                            LazyVGrid(columns: gridColumns, spacing: 16) {
+                                QuickActionButton(icon: "plus.circle", title: "Legg til manuelt") {
+                                    showManualAdd = true
+                                }
+
+                                NavigationLink {
+                                    WorkoutListView(store: store)
+                                } label: {
+                                    QuickActionLabel(icon: "clock.arrow.circlepath", title: "Historikk")
+                                }
+
+                                QuickActionButton(icon: "calendar", title: "Kalender") { }
+                                QuickActionButton(icon: "chart.bar", title: "Statistikk") { }
+                            }
+                        }
+
+                        // Siste økter (litt mer “treningsapp”-følelse: ikon + litt ekstra info)
+                        Card {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Siste økter")
+                                    .font(.headline)
+
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    HStack(spacing: 12) {
+                                        ForEach(vm.recentWorkouts) { w in
+                                            let sets = w.exercises.reduce(0) { $0 + $1.sets }
+                                            let volume = w.exercises.reduce(0.0) { acc, ex in
+                                                acc + (Double(ex.sets * ex.reps) * ex.weight)
+                                            }
+
+                                            VStack(alignment: .leading, spacing: 6) {
+                                                HStack(spacing: 8) {
+                                                    Image(systemName: w.category.iconName)
+                                                        .foregroundColor(w.category.color)
+                                                    Text(w.type)
+                                                        .font(.subheadline)
+                                                        .bold()
+                                                        .lineLimit(1)
+                                                }
+
+                                                Text(w.date, style: .date)
+                                                    .font(.caption)
+                                                    .foregroundColor(.secondary)
+
+                                                Text("\(sets) sett · \(String(format: "%.0f", volume)) kg")
+                                                    .font(.caption2)
+                                                    .foregroundColor(.secondary)
+                                            }
+                                            .padding()
+                                            .frame(width: 190, alignment: .leading)
+                                            .background(Color(.systemBackground))
+                                            .cornerRadius(12)
+                                            .shadow(color: Color(.black).opacity(0.06), radius: 3, x: 0, y: 2)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        Spacer().frame(height: 12)
                     }
+                    .padding(.bottom, 24)
                 }
-                .padding(.horizontal, 16)
-                .padding(.bottom, 24)
             }
-        }
-            }
-            // Manual add flow (existing form)
             .sheet(isPresented: $showManualAdd) {
                 AddWorkoutView(store: store)
             }
         }
     }
-
-
+}
 
 /// Setup screen shown before starting a live workout.
 /// Keeps LiveWorkoutView focused on logging during the workout.
