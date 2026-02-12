@@ -5,13 +5,12 @@
 //  Created by Johannes Støen on 12/02/2026.
 //
 
-
 import SwiftUI
 
 struct LiveWorkoutView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var vm: LiveWorkoutViewModel
-    @FocusState private var focused: Bool
+    @State private var showExitConfirm = false
 
     init(store: WorkoutStore, initialType: String = "", initialCategory: WorkoutCategory = .strength) {
         _vm = StateObject(
@@ -24,97 +23,128 @@ struct LiveWorkoutView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section {
-                    HStack {
-                        Text("Tid")
-                        Spacer()
-                        Text(timeString(vm.elapsed))
-                            .font(.headline)
-                            .monospacedDigit()
-                    }
-
-                    HStack {
-                        Button(vm.isRunning ? "Pause" : "Fortsett") {
-                            vm.isRunning ? vm.pause() : vm.resume()
-                        }
-                        Spacer()
-                        Button("Fullfør") {
-                            vm.finish()
-                            dismiss()
-                        }
-                    }
+        // Viktig: IKKE legg en ny NavigationStack her.
+        // LiveWorkoutView pushes allerede fra en NavigationStack.
+        Form {
+            Section {
+                HStack {
+                    Text("Tid")
+                    Spacer()
+                    Text(timeString(vm.elapsed))
+                        .font(.headline)
+                        .monospacedDigit()
+                        .foregroundStyle(vm.isRunning ? .primary : .secondary)
                 }
 
-                Section {
-                    HStack {
-                        Label(vm.draft.category.rawValue, systemImage: vm.draft.category.iconName)
-                            .foregroundStyle(vm.draft.category.color)
-                        Spacer()
-                        Text(vm.draft.type.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                             ? "Uten tittel"
-                             : vm.draft.type)
-                            .foregroundStyle(.secondary)
+                HStack {
+                    Button(vm.isRunning ? "Pause" : "Fortsett") {
+                        vm.isRunning ? vm.pause() : vm.resume()
+                    }
+                    Spacer()
+                    Button("Fullfør") {
+                        vm.finish()
+                        dismiss()
                     }
                 }
+            }
 
-                Section {
-                    if vm.draft.exercises.isEmpty {
-                        ContentUnavailableView(
-                            "Ingen øvelser enda",
-                            systemImage: "list.bullet.rectangle",
-                            description: Text("Legg til øvelser underveis.")
-                        )
-                        .frame(maxWidth: .infinity)
-                        .listRowBackground(Color.clear)
-                    } else {
-                        ForEach(vm.draft.exercises) { ex in
+            // Read-only info om økta
+            Section {
+                HStack {
+                    Label(vm.draft.category.rawValue, systemImage: vm.draft.category.iconName)
+                        .foregroundStyle(vm.draft.category.color)
+                    Spacer()
+                    Text(vm.draft.type.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                         ? "Uten tittel"
+                         : vm.draft.type)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            Section {
+                if vm.draft.exercises.isEmpty {
+                    ContentUnavailableView(
+                        "Ingen øvelser enda",
+                        systemImage: "list.bullet.rectangle",
+                        description: Text("Legg til øvelser underveis.")
+                    )
+                    .frame(maxWidth: .infinity)
+                    .listRowBackground(Color.clear)
+                } else {
+                    ForEach(vm.draft.exercises.indices, id: \.self) { i in
+                        let ex = vm.draft.exercises[i]
+
+                        HStack {
                             Button {
                                 openEdit(ex)
                             } label: {
                                 VStack(alignment: .leading, spacing: 4) {
-                                    Text(ex.name).font(.headline)
+                                    Text(ex.name)
+                                        .font(.headline)
                                     Text("Sett: \(ex.sets) · Reps: \(ex.reps) · \(String(format: "%.1f", ex.weight)) kg")
                                         .foregroundStyle(.secondary)
                                 }
                             }
                             .buttonStyle(.plain)
+
+                            Spacer()
+
+                            // Quick +1 set
+                            Button {
+                                vm.draft.exercises[i].sets += 1
+                            } label: {
+                                Image(systemName: "plus.circle.fill")
+                                    .imageScale(.large)
+                            }
+                            .accessibilityLabel("Legg til ett sett")
                         }
-                        .onDelete { vm.draft.exercises.remove(atOffsets: $0) }
                     }
-
-                    Button {
-                        vm.showExerciseSheet = true
-                    } label: {
-                        Label("Legg til øvelse", systemImage: "plus")
-                    }
-                } header: {
-                    HStack {
-                        Text("Øvelser")
-                        Spacer()
-                        Text("\(vm.draft.exercises.count)").foregroundStyle(.secondary)
-                    }
+                    .onDelete { vm.draft.exercises.remove(atOffsets: $0) }
                 }
 
-                Section("Notater") {
-                    TextEditor(text: $vm.draft.notes)
-                        .frame(minHeight: 100)
+                Button {
+                    vm.showExerciseSheet = true
+                } label: {
+                    Label("Legg til øvelse", systemImage: "plus")
+                }
+            } header: {
+                HStack {
+                    Text("Øvelser")
+                    Spacer()
+                    Text("\(vm.draft.exercises.count)")
+                        .foregroundStyle(.secondary)
                 }
             }
-            .navigationTitle("Pågående økt")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Lukk") { dismiss() }
-                }
+
+            Section("Notater") {
+                TextEditor(text: $vm.draft.notes)
+                    .frame(minHeight: 100)
             }
-            .sheet(isPresented: $vm.showExerciseSheet) {
-                NewExerciseSheet(exercises: $vm.draft.exercises)
+        }
+        .navigationTitle("Pågående økt")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Lukk") { showExitConfirm = true }
             }
-            .sheet(item: $vm.editingExerciseIndex) { idx in
-                EditExerciseSheet(exercise: $vm.draft.exercises[idx.value])
+        }
+        .confirmationDialog(
+            "Avslutte økten?",
+            isPresented: $showExitConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Avslutt uten å lagre", role: .destructive) {
+                dismiss()
             }
+            Button("Fortsett økten", role: .cancel) { }
+        } message: {
+            Text("Du har en pågående økt. Hvis du avslutter nå, blir den ikke lagret.")
+        }
+        .sheet(isPresented: $vm.showExerciseSheet) {
+            NewExerciseSheet(exercises: $vm.draft.exercises)
+        }
+        .sheet(item: $vm.editingExerciseIndex) { idx in
+            EditExerciseSheet(exercise: $vm.draft.exercises[idx.value])
         }
     }
 
