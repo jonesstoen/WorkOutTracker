@@ -39,7 +39,7 @@ struct CalendarWorkoutView: View {
                 }
                 .padding(.horizontal)
 
-                let weekdaySymbols = ["S", "M", "T", "W", "T", "F", "S"]
+                let weekdaySymbols = Calendar.current.shortStandaloneWeekdaySymbols
 
                 // Ukedager + dager i måneden
                 LazyVGrid(columns: Array(repeating: .init(.flexible()), count: 7)) {
