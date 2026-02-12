@@ -16,20 +16,42 @@ protocol PersistenceService {
 
 /// Standard‐implementasjon som bruker UserDefaults + JSON
 final class UserDefaultsPersistence: PersistenceService {
-    private let key = "saved_workouts"
+    private enum Keys {
+        static let workouts = "saved_workouts"
+    }
+
+    private let userDefaults: UserDefaults
+
+    init(userDefaults: UserDefaults = .standard) {
+        self.userDefaults = userDefaults
+    }
 
     func loadWorkouts() -> [Workout] {
         guard
-            let data = UserDefaults.standard.data(forKey: key),
-            let decoded = try? JSONDecoder().decode([Workout].self, from: data)
+            let data = userDefaults.data(forKey: Keys.workouts)
         else {
+            return []
+        }
+        let decoded: [Workout]
+        do {
+            decoded = try JSONDecoder().decode([Workout].self, from: data)
+            print("📦 Loaded \(decoded.count) workouts")
+        } catch {
+            print("❌ Failed to decode workouts:", error)
             return []
         }
         return decoded
     }
 
     func saveWorkouts(_ workouts: [Workout]) {
-        guard let data = try? JSONEncoder().encode(workouts) else { return }
-        UserDefaults.standard.set(data, forKey: key)
+        let data: Data
+        do {
+            data = try JSONEncoder().encode(workouts)
+            print("💾 Saved \(workouts.count) workouts")
+        } catch {
+            print("❌ Failed to encode workouts:", error)
+            return
+        }
+        userDefaults.set(data, forKey: Keys.workouts)
     }
 }
