@@ -192,6 +192,8 @@ struct LiveWorkoutView: View {
             titleVisibility: .visible
         ) {
             Button("Avbryt økt uten å lagre", role: .destructive) {
+                LiveSessionCoordinator.shared.isActive = false
+                LiveSessionCoordinator.shared.isLiveViewVisible = false
                 dismiss()
             }
             Button("Fortsett økten", role: .cancel) { }
