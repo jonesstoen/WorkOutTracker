@@ -39,7 +39,16 @@ struct CalendarWorkoutView: View {
                 }
                 .padding(.horizontal)
 
-                let weekdaySymbols = Calendar.current.shortStandaloneWeekdaySymbols
+                // Compute weekday symbols outside of the ViewBuilder result to avoid Void expressions
+                let calendar = Calendar.current
+                let weekdaySymbols: [String] = {
+                    var symbols = calendar.shortStandaloneWeekdaySymbols
+                    let shift = calendar.firstWeekday - 1
+                    if shift > 0 {
+                        symbols = Array(symbols[shift...] + symbols[..<shift])
+                    }
+                    return symbols
+                }()
 
                 // Ukedager + dager i måneden
                 LazyVGrid(columns: Array(repeating: .init(.flexible()), count: 7)) {
@@ -55,26 +64,27 @@ struct CalendarWorkoutView: View {
                     ForEach(vm.daysInMonth.indices, id: \.self) { index in
                         if let date = vm.daysInMonth[index] {
                             ZStack {
-                                // Marker valgt dag
-                                if Calendar.current.isDate(date, inSameDayAs: vm.selectedDate) {
+                                let isToday = Calendar.current.isDateInToday(date)
+                                let isSelected = Calendar.current.isDate(date, inSameDayAs: vm.selectedDate)
+
+                                if isSelected {
                                     RoundedRectangle(cornerRadius: 6)
-                                        .fill(Color.blue)
+                                        .fill(Color.accentColor)
                                         .frame(height: 36)
-                                }
-                                // Marker dag med økt
-                                else if vm.hasWorkout(on: date) {
+                                } else if vm.hasWorkout(on: date) {
                                     RoundedRectangle(cornerRadius: 6)
                                         .fill(Color.green.opacity(0.8))
+                                        .frame(height: 36)
+                                } else if isToday {
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .stroke(Color.accentColor, lineWidth: 1.5)
                                         .frame(height: 36)
                                 }
 
                                 Text("\(Calendar.current.component(.day, from: date))")
                                     .frame(maxWidth: .infinity, minHeight: 36)
-                                    .foregroundColor(
-                                        Calendar.current.isDate(date, inSameDayAs: vm.selectedDate)
-                                        ? .white
-                                        : .primary
-                                    )
+                                    .foregroundColor(isSelected ? .white : .primary)
+                                    .fontWeight(isToday ? .semibold : .regular)
                                     .onTapGesture {
                                         withAnimation(.easeInOut(duration: 0.3)) {
                                             vm.selectedDate = date
@@ -92,7 +102,13 @@ struct CalendarWorkoutView: View {
 
                 // Økter for valgt dag i eget «kort»
                 VStack(alignment: .leading, spacing: 8) {
-                    Text(LocalizedStringKey("Økter den \(vm.selectedDate.formatted(.dateTime.day().month()))"))
+                    let headerFormatter: DateFormatter = {
+                        let df = DateFormatter()
+                        df.locale = Locale.current
+                        df.dateFormat = "d. MMM yyyy"
+                        return df
+                    }()
+                    Text("Økter \(headerFormatter.string(from: vm.selectedDate))")
                         .font(.headline)
 
                     if vm.workoutsForSelectedDate.isEmpty {
@@ -122,6 +138,13 @@ struct CalendarWorkoutView: View {
                                 .padding()
                                 .background(Color(.secondarySystemBackground))
                                 .cornerRadius(10)
+                            }
+                            .swipeActions {
+                                Button(role: .destructive) {
+                                    vm.delete(workout)
+                                } label: {
+                                    Label("Slett", systemImage: "trash")
+                                }
                             }
                         }
                     }
