@@ -7,6 +7,7 @@ struct ContentView: View {
     @StateObject private var store: WorkoutStore
     private let importService: WorkoutImporting
     @StateObject private var liveSession = LiveSessionCoordinator.shared
+    @StateObject private var homeNav = HomeNavigationCoordinator.shared
     @State private var selectedTab = 0
 
     @AppStorage("hasSeenHealthOnboarding") private var hasSeenHealthOnboarding = false
@@ -21,12 +22,10 @@ struct ContentView: View {
     var body: some View {
         ZStack(alignment: .top) {
             TabView(selection: $selectedTab) {
-                NavigationView {
-                    HomeView(store: store)
-                        .navigationBarHidden(true)
-                }
-                .tabItem { Label("Oversikt", systemImage: "house") }
-                .tag(0)
+                HomeView(store: store)
+                    .environmentObject(homeNav)
+                    .tabItem { Label("Oversikt", systemImage: "house") }
+                    .tag(0)
 
                 NavigationView {
                     WorkoutListView(store: store)
@@ -54,7 +53,10 @@ struct ContentView: View {
             if !showHealthOnboarding {
                 Task { await importService.importIfNeeded() }
             }
-            liveSession.onResumeTapped = { selectedTab = 0 }
+            liveSession.onResumeTapped = {
+                selectedTab = 0
+                homeNav.resumeLiveRequested = true
+            }
         }
         .sheet(isPresented: $showHealthOnboarding, onDismiss: {
             hasSeenHealthOnboarding = true
@@ -65,3 +67,4 @@ struct ContentView: View {
         }
     }
 }
+

@@ -9,6 +9,9 @@ struct HomeView: View {
     @State private var chartRange = 7
     @AppStorage("userName") private var userName: String = "Johannes"
 
+    @EnvironmentObject private var nav: HomeNavigationCoordinator
+    @State private var path = NavigationPath()
+
     private let gridColumns = [
         GridItem(.flexible()), GridItem(.flexible())
     ]
@@ -23,7 +26,7 @@ struct HomeView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             ZStack {
                 // 1) Softere bakgrunn enn før
                 LinearGradient(
@@ -250,8 +253,19 @@ struct HomeView: View {
                     }
                 }
             }
+            .navigationDestination(for: HomeNavigationCoordinator.Route.self) { route in
+                switch route {
+                case .liveWorkout:
+                    LiveWorkoutView(store: store)
+                }
+            }
+        }
+        .onChange(of: nav.resumeLiveRequested) { requested in
+            if requested {
+                nav.resumeLiveRequested = false
+                path.append(HomeNavigationCoordinator.Route.liveWorkout)
+            }
         }
     }
 }
-
 
