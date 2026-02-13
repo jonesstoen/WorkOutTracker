@@ -202,6 +202,7 @@ struct LiveWorkoutView: View {
             Button("Avbryt", role: .cancel) { }
             Button("Fullfør", role: .destructive) {
                 vm.finish()
+                LiveSessionCoordinator.shared.isActive = false
                 dismiss()
             }
         } message: {
@@ -212,6 +213,29 @@ struct LiveWorkoutView: View {
         }
         .sheet(item: $vm.editingExerciseIndex) { idx in
             EditExerciseSheet(exercise: $vm.draft.exercises[idx.value])
+        }
+        .onAppear {
+            let session = LiveSessionCoordinator.shared
+            session.isActive = true
+            session.type = vm.draft.type.trimmingCharacters(in: .whitespacesAndNewlines)
+            session.category = vm.draft.category
+            session.elapsed = vm.elapsed
+            session.isLiveViewVisible = true
+        }
+        .onChange(of: vm.elapsed) { newValue in
+            LiveSessionCoordinator.shared.elapsed = newValue
+        }
+        .onChange(of: vm.draft.type) { newValue in
+            LiveSessionCoordinator.shared.type = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        .onChange(of: vm.draft.category) { newValue in
+            LiveSessionCoordinator.shared.category = newValue
+        }
+        .onDisappear {
+            // Only mark not visible if the session is still active
+            if LiveSessionCoordinator.shared.isActive {
+                LiveSessionCoordinator.shared.isLiveViewVisible = false
+            }
         }
     }
 
@@ -226,6 +250,7 @@ struct LiveWorkoutView: View {
             showFinishConfirm = true
         } else {
             vm.finish()
+            LiveSessionCoordinator.shared.isActive = false
             dismiss()
         }
     }

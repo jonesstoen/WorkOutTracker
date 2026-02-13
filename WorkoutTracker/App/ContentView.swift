@@ -6,6 +6,7 @@ import HealthKit
 struct ContentView: View {
     @StateObject private var store: WorkoutStore
     private let importService: WorkoutImporting
+    @StateObject private var liveSession = LiveSessionCoordinator.shared
     @State private var selectedTab = 0
 
     @AppStorage("hasSeenHealthOnboarding") private var hasSeenHealthOnboarding = false
@@ -18,27 +19,32 @@ struct ContentView: View {
     }
 
     var body: some View {
-        TabView(selection: $selectedTab) {
-            NavigationView {
-                HomeView(store: store)
-                    .navigationBarHidden(true)
-            }
-            .tabItem { Label("Oversikt", systemImage: "house") }
-            .tag(0)
+        ZStack(alignment: .top) {
+            TabView(selection: $selectedTab) {
+                NavigationView {
+                    HomeView(store: store)
+                        .navigationBarHidden(true)
+                }
+                .tabItem { Label("Oversikt", systemImage: "house") }
+                .tag(0)
 
-            NavigationView {
-                WorkoutListView(store: store)
-                    .navigationTitle("Mine Økter")
-            }
-            .tabItem { Label("Liste", systemImage: "list.bullet") }
-            .tag(1)
+                NavigationView {
+                    WorkoutListView(store: store)
+                        .navigationTitle("Mine Økter")
+                }
+                .tabItem { Label("Liste", systemImage: "list.bullet") }
+                .tag(1)
 
-            NavigationView {
-                CalendarWorkoutView(store: store)
-                    .navigationTitle("Kalender")
+                NavigationView {
+                    CalendarWorkoutView(store: store)
+                        .navigationTitle("Kalender")
+                }
+                .tabItem { Label("Kalender", systemImage: "calendar") }
+                .tag(2)
             }
-            .tabItem { Label("Kalender", systemImage: "calendar") }
-            .tag(2)
+            LiveWorkoutBanner(session: liveSession)
+                .padding(.top, 4)
+                .animation(.spring(response: 0.35, dampingFraction: 0.85), value: liveSession.isActive)
         }
         .onAppear {
             let status = HKHealthStore().authorizationStatus(for: .workoutType())
@@ -48,6 +54,7 @@ struct ContentView: View {
             if !showHealthOnboarding {
                 Task { await importService.importIfNeeded() }
             }
+            liveSession.onResumeTapped = { selectedTab = 0 }
         }
         .sheet(isPresented: $showHealthOnboarding, onDismiss: {
             hasSeenHealthOnboarding = true
