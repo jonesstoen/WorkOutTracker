@@ -60,19 +60,6 @@ struct LiveWorkoutView: View {
                 }
             }
 
-            // Read-only info om økta
-            Section {
-                HStack {
-                    Label(vm.draft.category.rawValue, systemImage: vm.draft.category.iconName)
-                        .foregroundStyle(vm.draft.category.color)
-                    Spacer()
-                    Text(vm.draft.type.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                         ? "Uten tittel"
-                         : vm.draft.type)
-                        .foregroundStyle(.secondary)
-                }
-            }
-
             Section {
                 if vm.draft.exercises.isEmpty {
                     VStack(spacing: 8) {
@@ -121,11 +108,29 @@ struct LiveWorkoutView: View {
                 }
 
             } header: {
-                HStack {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text("Øvelser")
+                    // Add exercise button always visible to let users add more
+                    Button {
+                        vm.showExerciseSheet = true
+                    } label: {
+                        Image(systemName: "plus.circle.fill")
+                            .imageScale(.medium)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Legg til øvelse")
+
                     Spacer()
-                    Text("\(vm.draft.exercises.count)")
+
+                    // Compute quick stats
+                    let exerciseCount = vm.draft.exercises.count
+                    let totalSets = vm.draft.exercises.reduce(0) { $0 + $1.sets }
+                    let totalVolume = vm.draft.exercises.reduce(0.0) { $0 + (Double($1.sets * $1.reps) * $1.weight) }
+                    let volumeString = totalVolume > 0 ? " · Totalt volum: \(Int(totalVolume)) kg" : ""
+                    Text("\(exerciseCount) øvelse\(exerciseCount == 1 ? "" : "r") · \(totalSets) sett\(volumeString)")
+                        .font(.subheadline)
                         .foregroundStyle(.secondary)
+                        .lineLimit(1)
                 }
             }
 
@@ -156,9 +161,27 @@ struct LiveWorkoutView: View {
                 .tint(.green)
             }
         }
-        .navigationTitle("Pågående økt")
-        .navigationBarTitleDisplayMode(.inline)
+        .toolbarTitleDisplayMode(.inline)
         .toolbar {
+            ToolbarItem(placement: .principal) {
+                VStack(spacing: 2) {
+                    Text("Pågående økt")
+                        .font(.headline)
+                    HStack(spacing: 6) {
+                        Image(systemName: vm.draft.category.iconName)
+                            .foregroundStyle(vm.draft.category.color)
+                        Text(
+                            vm.draft.type.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                            ? vm.draft.category.rawValue
+                            : vm.draft.type
+                        )
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    }
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Pågående økt, \(vm.draft.category.rawValue), \(vm.draft.type.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Uten tittel" : vm.draft.type)")
+            }
             ToolbarItem(placement: .cancellationAction) {
                 Button("Lukk") { showExitConfirm = true }
             }
@@ -222,3 +245,4 @@ struct LiveWorkoutView: View {
         return String(format: "%02d:%02d", m, sec)
     }
 }
+
