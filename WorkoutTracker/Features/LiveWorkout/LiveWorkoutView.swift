@@ -158,7 +158,7 @@ struct LiveWorkoutView: View {
                     }
                 }
                 .buttonStyle(.borderedProminent)
-                .tint(.green)
+                .tint(.accentColor)
             }
         }
         .toolbarTitleDisplayMode(.inline)
