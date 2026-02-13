@@ -5,7 +5,9 @@ struct HomeView: View {
     @StateObject private var vm: HomeViewModel
 
     @State private var showManualAdd = false
+    @State private var showSettings = false
     @State private var chartRange = 7
+    @AppStorage("userName") private var userName: String = "Johannes"
 
     private let gridColumns = [
         GridItem(.flexible()), GridItem(.flexible())
@@ -46,7 +48,8 @@ struct HomeView: View {
 
                         // Hilsen
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("\(vm.greeting), Johannes!")
+                            let name = userName.trimmingCharacters(in: .whitespacesAndNewlines)
+                            Text(name.isEmpty ? vm.greeting : "\(vm.greeting), \(name)!")
                                 .font(.largeTitle).bold()
                                 .foregroundColor(.white)
 
@@ -174,9 +177,11 @@ struct HomeView: View {
                                 } label: {
                                     QuickActionLabel(icon: "clock.arrow.circlepath", title: "Historikk")
                                 }
-
-                                QuickActionButton(icon: "calendar", title: "Kalender") { }
-                                QuickActionButton(icon: "chart.bar", title: "Statistikk") { }
+                                NavigationLink {
+                                    CalendarWorkoutView(store: store)
+                                } label: {
+                                    QuickActionLabel(icon: "calendar", title: "Kalender")
+                                }
                             }
                         }
 
@@ -230,6 +235,20 @@ struct HomeView: View {
             }
             .sheet(isPresented: $showManualAdd) {
                 AddWorkoutView(store: store)
+            }
+            .sheet(isPresented: $showSettings) {
+                UserSettingsView()
+            }
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showSettings = true
+                    } label: {
+                        Image(systemName: "gearshape.fill")
+                            .imageScale(.medium)
+                            .foregroundStyle(.white)
+                    }
+                }
             }
         }
     }
