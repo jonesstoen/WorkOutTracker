@@ -34,7 +34,7 @@
 			isa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;
 			buildPhase = 157A85802E08830800CB540F /* Resources */;
 			membershipExceptions = (
-				"Shared/UIExtensions/WorkoutCategory+Ui.swift",
+				"Core/Domain/WorkoutCategory+Ui.swift",
 			);
 		};
 /* End PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
