@@ -33,7 +33,7 @@ final class WorkoutStore: ObservableObject, WorkoutRepository {
     var workoutsPublisher: Published<[Workout]>.Publisher { $workouts }
 
     /// Lar deg bytte ut lagringslag (f.eks. CoreData) enklere
-    init(persistence: PersistenceService = UserDefaultsPersistence()) {
+    init(persistence: PersistenceService) {
         self.persistence = persistence
         // Last inn fra service
         self.workouts = persistence.loadWorkouts()
