@@ -71,9 +71,7 @@ struct LiveWorkoutView: View {
                     .frame(maxWidth: .infinity)
                     .listRowBackground(Color.clear)
                 } else {
-                    ForEach(vm.draft.exercises.indices, id: \.self) { i in
-                        let ex = vm.draft.exercises[i]
-
+                    ForEach(Array(vm.draft.exercises.enumerated()), id: \.element.id) { index, ex in
                         HStack {
                             Button {
                                 openEdit(ex)
@@ -91,7 +89,7 @@ struct LiveWorkoutView: View {
 
                             // Quick +1 set
                             Button {
-                                vm.draft.exercises[i].sets += 1
+                                vm.draft.exercises[index].sets += 1
                             } label: {
                                 Image(systemName: "plus.circle.fill")
                                     .imageScale(.large)

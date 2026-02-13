@@ -20,8 +20,13 @@ class AddWorkoutViewModel: ObservableObject {
     @Published var showExerciseSheet = false
     @Published var editingExerciseIndex: IdentifiableInt?
 
-    private let store: WorkoutStore
-    init(store: WorkoutStore) { self.store = store }
+    private let repository: WorkoutRepository
+
+    init(store: WorkoutStore) {
+        // For nå bruker vi WorkoutStore som konkret repo, men avhengigheten er
+        // uttrykt via WorkoutRepository slik at vi senere kan bytte implementasjon.
+        self.repository = store
+    }
 
     var isSaveDisabled: Bool {
         type.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -35,6 +40,6 @@ class AddWorkoutViewModel: ObservableObject {
             exercises: exercises,
             notes: notes.trimmingCharacters(in: .whitespacesAndNewlines)
         )
-        store.workouts.append(workout)
+        repository.add(workout)
     }
 }

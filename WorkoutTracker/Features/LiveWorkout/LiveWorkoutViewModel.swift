@@ -19,12 +19,14 @@ final class LiveWorkoutViewModel: ObservableObject {
     @Published var editingExerciseIndex: IdentifiableInt?
 
     private var timerCancellable: AnyCancellable?
-    private let store: WorkoutStore
+    private let repository: WorkoutRepository
     private var pauseBeganAt: Date?
     private var totalPaused: TimeInterval = 0
 
     init(store: WorkoutStore, initialType: String = "", initialCategory: WorkoutCategory = .strength) {
-        self.store = store
+        // Tar inn WorkoutStore nå, men lagrer det som WorkoutRepository
+        // slik at vi på sikt kan teste med en mock eller bytte implementasjon.
+        self.repository = store
         draft.type = initialType
         draft.category = initialCategory
         self.isRunning = true
@@ -68,6 +70,6 @@ final class LiveWorkoutViewModel: ObservableObject {
             exercises: draft.exercises,
             notes: draft.notes.trimmingCharacters(in: .whitespacesAndNewlines)
         )
-        store.workouts.append(workout)
+        repository.add(workout)
     }
 }

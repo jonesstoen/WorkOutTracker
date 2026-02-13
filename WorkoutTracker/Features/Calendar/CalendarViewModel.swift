@@ -41,7 +41,10 @@ class CalendarViewModel: ObservableObject {
             matching: DateComponents(hour: 0, minute: 0, second: 0)
         )
 
-        let firstWeekday = Calendar.current.component(.weekday, from: dates.first!)
+        guard let firstDate = dates.first else {
+            return []
+        }
+        let firstWeekday = Calendar.current.component(.weekday, from: firstDate)
         let paddingDays = firstWeekday - 1
 
         return Array(repeating: nil, count: paddingDays)
