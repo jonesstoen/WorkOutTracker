@@ -43,24 +43,15 @@ struct HomeView: View {
                     VStack(spacing: 16) {
                         Spacer().frame(height: 18)
 
-                        Image("AppLogo")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(height: 40)
-                            .padding(.top, 12)
-
                         // Hilsen
                         VStack(alignment: .leading, spacing: 4) {
-                            let name = userName.trimmingCharacters(in: .whitespacesAndNewlines)
-                            Text(name.isEmpty ? vm.greeting : "\(vm.greeting), \(name)!")
+                            Text("\(vm.greeting), Johannes!")
                                 .font(.largeTitle).bold()
                                 .foregroundColor(.white)
-
                             Text(vm.dateString)
                                 .font(.subheadline)
-                                .foregroundColor(.white.opacity(0.65))
+                                .foregroundColor(.white.opacity(0.6))
                         }
-                        .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal, 24)
 
                         // 2) Stor “Start økt” som primær CTA
@@ -234,6 +225,23 @@ struct HomeView: View {
                         Spacer().frame(height: 12)
                     }
                     .padding(.bottom, 24)
+                }
+            }
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button {
+                        // TODO: Åpne meny senere
+                    } label: {
+                        Image("AppLogo")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 22, height: 22)
+                            .padding(8)
+                            .background(.ultraThinMaterial)
+                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Meny")
                 }
             }
             .sheet(isPresented: $showManualAdd) {
