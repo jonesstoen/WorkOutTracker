@@ -11,10 +11,12 @@ import Combine
 class WorkoutListViewModel: ObservableObject {
     @Published private(set) var workouts: [Workout] = []
     private var cancellables = Set<AnyCancellable>()
-    private let store: WorkoutStore
+    private let repository: WorkoutRepository
 
     init(store: WorkoutStore) {
-        self.store = store
+        // Bruk WorkoutStore som konkret implementasjon, men snakk via
+        // WorkoutRepository slik at vi kan bytte senere.
+        self.repository = store
         self.workouts = store.workouts
 
         store.$workouts
@@ -63,6 +65,6 @@ class WorkoutListViewModel: ObservableObject {
         guard let sectionWorkouts = sections.first(where: { $0.title == sectionTitle })?.workouts
         else { return }
         let toDelete = offsets.map { sectionWorkouts[$0] }
-        store.workouts.removeAll { toDelete.contains($0) }
+        toDelete.forEach { repository.delete($0) }
     }
 }

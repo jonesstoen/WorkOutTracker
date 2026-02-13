@@ -7,6 +7,6 @@
 import SwiftUI
 
 struct IdentifiableInt: Identifiable {
-    let id = UUID()
     let value: Int
+    var id: Int { value }
 }
