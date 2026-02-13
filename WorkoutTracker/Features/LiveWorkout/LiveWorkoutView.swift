@@ -11,6 +11,7 @@ struct LiveWorkoutView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var vm: LiveWorkoutViewModel
     @State private var showExitConfirm = false
+    @State private var showFinishConfirm = false
 
     init(store: WorkoutStore, initialType: String = "", initialCategory: WorkoutCategory = .strength) {
         _vm = StateObject(
@@ -27,23 +28,34 @@ struct LiveWorkoutView: View {
         // LiveWorkoutView pushes allerede fra en NavigationStack.
         Form {
             Section {
-                HStack {
-                    Text("Tid")
-                    Spacer()
-                    Text(timeString(vm.elapsed))
-                        .font(.headline)
-                        .monospacedDigit()
-                        .foregroundStyle(vm.isRunning ? .primary : .secondary)
-                }
-
-                HStack {
-                    Button(vm.isRunning ? "Pause" : "Fortsett") {
-                        vm.isRunning ? vm.pause() : vm.resume()
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text("Tid")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Text(vm.isRunning ? "Pågår" : "Pauset")
+                            .font(.caption)
+                            .foregroundStyle(vm.isRunning ? .green : .orange)
                     }
-                    Spacer()
-                    Button("Fullfør") {
-                        vm.finish()
-                        dismiss()
+
+                    HStack {
+                        Spacer()
+                        Text(timeString(vm.elapsed))
+                            .font(.system(size: 32, weight: .semibold, design: .monospaced))
+                            .foregroundStyle(vm.isRunning ? .primary : .secondary)
+                        Spacer()
+                    }
+
+                    HStack {
+                        Button {
+                            vm.isRunning ? vm.pause() : vm.resume()
+                        } label: {
+                            Label(vm.isRunning ? "Pause" : "Fortsett",
+                                  systemImage: vm.isRunning ? "pause.fill" : "play.fill")
+                        }
+
+                        Spacer()
                     }
                 }
             }
@@ -63,11 +75,19 @@ struct LiveWorkoutView: View {
 
             Section {
                 if vm.draft.exercises.isEmpty {
-                    ContentUnavailableView(
-                        "Ingen øvelser enda",
-                        systemImage: "list.bullet.rectangle",
-                        description: Text("Legg til øvelser underveis.")
-                    )
+                    VStack(spacing: 8) {
+                        ContentUnavailableView(
+                            "Ingen øvelser enda",
+                            systemImage: "list.bullet.rectangle",
+                            description: Text("Legg til øvelser underveis.")
+                        )
+                        Button {
+                            vm.showExerciseSheet = true
+                        } label: {
+                            Label("Legg til første øvelse", systemImage: "plus")
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
                     .frame(maxWidth: .infinity)
                     .listRowBackground(Color.clear)
                 } else {
@@ -100,11 +120,6 @@ struct LiveWorkoutView: View {
                     .onDelete { vm.draft.exercises.remove(atOffsets: $0) }
                 }
 
-                Button {
-                    vm.showExerciseSheet = true
-                } label: {
-                    Label("Legg til øvelse", systemImage: "plus")
-                }
             } header: {
                 HStack {
                     Text("Øvelser")
@@ -115,8 +130,30 @@ struct LiveWorkoutView: View {
             }
 
             Section("Notater") {
-                TextEditor(text: $vm.draft.notes)
-                    .frame(minHeight: 100)
+                ZStack(alignment: .topLeading) {
+                    if vm.draft.notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        Text("Skriv notater om hvordan økten føltes, hva som gikk bra, osv.")
+                            .foregroundColor(.secondary)
+                            .padding(.vertical, 8)
+                            .padding(.horizontal, 4)
+                    }
+                    TextEditor(text: $vm.draft.notes)
+                        .frame(minHeight: 100)
+                }
+            }
+
+            Section {
+                Button {
+                    Task { await handleFinishTapped() }
+                } label: {
+                    HStack {
+                        Spacer()
+                        Label("Fullfør økt", systemImage: "checkmark.circle.fill")
+                        Spacer()
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.green)
             }
         }
         .navigationTitle("Pågående økt")
@@ -127,22 +164,46 @@ struct LiveWorkoutView: View {
             }
         }
         .confirmationDialog(
-            "Avslutte økten?",
+            "Avbryte økten uten å lagre?",
             isPresented: $showExitConfirm,
             titleVisibility: .visible
         ) {
-            Button("Avslutt uten å lagre", role: .destructive) {
+            Button("Avbryt økt uten å lagre", role: .destructive) {
                 dismiss()
             }
             Button("Fortsett økten", role: .cancel) { }
         } message: {
-            Text("Du har en pågående økt. Hvis du avslutter nå, blir den ikke lagret.")
+            Text("Hvis du avbryter nå vil økten ikke bli lagret.")
+        }
+        .alert("Fullføre og lagre økten?", isPresented: $showFinishConfirm) {
+            Button("Avbryt", role: .cancel) { }
+            Button("Fullfør", role: .destructive) {
+                vm.finish()
+                dismiss()
+            }
+        } message: {
+            Text("Økten er veldig kort eller uten øvelser. Er du sikker på at du vil fullføre og lagre den?")
         }
         .sheet(isPresented: $vm.showExerciseSheet) {
             NewExerciseSheet(exercises: $vm.draft.exercises)
         }
         .sheet(item: $vm.editingExerciseIndex) { idx in
             EditExerciseSheet(exercise: $vm.draft.exercises[idx.value])
+        }
+    }
+
+    @MainActor
+    private func handleFinishTapped() async {
+        // Hvis økta er veldig kort eller uten øvelser → bekreft før vi lagrer.
+        let isVeryShort = vm.elapsed < 60 // under 1 minutt
+        let hasNoExercises = vm.draft.exercises.isEmpty
+
+        if isVeryShort || hasNoExercises {
+            // Vis egen bekreftelse for å fullføre (lagre) kort/tom økt.
+            showFinishConfirm = true
+        } else {
+            vm.finish()
+            dismiss()
         }
     }
 
