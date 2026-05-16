@@ -39,21 +39,19 @@ class HomeViewModel: ObservableObject {
 
     var totalSets: Int {
         workouts.reduce(0) { sum, w in
-            sum + w.exercises.reduce(0) { $0 + $1.sets }
+            sum + w.exercises.reduce(0) { $0 + $1.sets.count }
         }
     }
 
     var totalReps: Int {
         workouts.reduce(0) { sum, w in
-            sum + w.exercises.reduce(0) { $0 + ($1.sets * $1.reps) }
+            sum + w.exercises.reduce(0) { $0 + $1.sets.reduce(0) { $0 + $1.reps } }
         }
     }
 
     var totalWeight: Double {
         workouts.reduce(0) { sum, w in
-            sum + w.exercises.reduce(0) {
-                $0 + (Double($1.sets * $1.reps) * $1.weight)
-            }
+            sum + w.exercises.reduce(0) { $0 + $1.totalVolume }
         }
     }
 
@@ -137,5 +135,39 @@ class HomeViewModel: ObservableObject {
     /// De seneste 5 øktene, sortert synkende på dato
     var recentWorkouts: [Workout] {
         Array(workouts.sorted { $0.date > $1.date }.prefix(5))
+    }
+
+    /// Antall økter logget inneværende kalenderuke
+    var workoutsThisWeek: Int {
+        let cal = Calendar.current
+        return workouts.filter {
+            cal.isDate($0.date, equalTo: Date(), toGranularity: .weekOfYear)
+        }.count
+    }
+
+    /// Antall sammenhengende dager med minst én økt (teller i dag hvis du har trent, ellers i går)
+    var currentStreak: Int {
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        let workoutDays = Set(workouts.map { cal.startOfDay(for: $0.date) })
+
+        let startDay: Date
+        if workoutDays.contains(today) {
+            startDay = today
+        } else if let yesterday = cal.date(byAdding: .day, value: -1, to: today),
+                  workoutDays.contains(yesterday) {
+            startDay = yesterday
+        } else {
+            return 0
+        }
+
+        var streak = 0
+        var day = startDay
+        while workoutDays.contains(day) {
+            streak += 1
+            guard let prev = cal.date(byAdding: .day, value: -1, to: day) else { break }
+            day = prev
+        }
+        return streak
     }
 }
