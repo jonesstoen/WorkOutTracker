@@ -76,6 +76,22 @@ class CalendarViewModel: ObservableObject {
         }
     }
 
+    /// Hopp tilbake til dagens dato og måned
+    func goToToday() {
+        currentMonth = Date()
+        selectedDate = Date()
+    }
+
+    /// Kategorifarger for alle økter på en gitt dag (maks 3)
+    func workoutColors(on date: Date) -> [Color] {
+        Array(
+            workouts
+                .filter { Calendar.current.isDate($0.date, inSameDayAs: date) }
+                .prefix(3)
+                .map { $0.category.color }
+        )
+    }
+
     /// Sletter én økt fra butikken
     func delete(_ workout: Workout) {
         store.workouts.removeAll { $0.id == workout.id }

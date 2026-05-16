@@ -1,11 +1,3 @@
-//
-//  EditExerciseSheet.swift
-//  WorkoutTracker
-//
-//  Created by Johannes Støen on 22/06/2025.
-//
-
-
 import SwiftUI
 
 struct EditExerciseSheet: View {
@@ -15,17 +7,65 @@ struct EditExerciseSheet: View {
     var body: some View {
         NavigationView {
             Form {
-                TextField("Øvelse", text: $exercise.name)
-                Stepper("Sett: \(exercise.sets)", value: $exercise.sets, in: 1...10)
-                Stepper("Reps: \(exercise.reps)", value: $exercise.reps, in: 1...30)
-                TextField("Vekt (kg)", value: $exercise.weight, format: .number)
-                    .keyboardType(.decimalPad)
+                Section("Øvelse") {
+                    TextField("Navn", text: $exercise.name)
+                }
+
+                Section {
+                    ForEach(exercise.sets.indices, id: \.self) { i in
+                        EditSetRow(index: i, set: $exercise.sets[i])
+                    }
+                    .onDelete { exercise.sets.remove(atOffsets: $0) }
+
+                    Button {
+                        let last = exercise.sets.last ?? WorkingSet(reps: 10, weight: 0)
+                        exercise.sets.append(WorkingSet(reps: last.reps, weight: last.weight))
+                    } label: {
+                        Label("Legg til sett", systemImage: "plus")
+                    }
+                } header: {
+                    Text("Sett")
+                } footer: {
+                    Text("Sveip for å slette et sett.")
+                }
             }
             .navigationTitle("Rediger øvelse")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Ferdig") { dismiss() }
                 }
+            }
+        }
+    }
+}
+
+private struct EditSetRow: View {
+    let index: Int
+    @Binding var set: WorkingSet
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Text("Sett \(index + 1)")
+                .foregroundStyle(.secondary)
+                .frame(width: 58, alignment: .leading)
+
+            Spacer()
+
+            TextField("0", value: $set.weight, format: .number)
+                .keyboardType(.decimalPad)
+                .multilineTextAlignment(.trailing)
+                .frame(width: 60)
+
+            Text("kg")
+                .foregroundStyle(.secondary)
+
+            Divider()
+                .frame(height: 22)
+                .padding(.horizontal, 4)
+
+            Stepper(value: $set.reps, in: 1...50) {
+                Text("\(set.reps) reps")
+                    .frame(width: 64, alignment: .trailing)
             }
         }
     }

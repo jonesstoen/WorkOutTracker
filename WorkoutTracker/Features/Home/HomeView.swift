@@ -7,14 +7,11 @@ struct HomeView: View {
     @State private var showManualAdd = false
     @State private var showSettings = false
     @State private var chartRange = 7
-    @AppStorage("userName") private var userName: String = "Johannes"
+    @AppStorage("userName")    private var userName: String = "Johannes"
+    @AppStorage("weeklyGoal") private var weeklyGoal: Int = 3
 
     @EnvironmentObject private var nav: HomeNavigationCoordinator
     @State private var path = NavigationPath()
-
-    private let gridColumns = [
-        GridItem(.flexible()), GridItem(.flexible())
-    ]
 
     init(store: WorkoutStore) {
         self._store = ObservedObject(wrappedValue: store)
@@ -28,7 +25,6 @@ struct HomeView: View {
     var body: some View {
         NavigationStack(path: $path) {
             ZStack {
-                // 1) Softere bakgrunn enn før
                 LinearGradient(
                     colors: [
                         Color.accentColor.opacity(0.22),
@@ -43,18 +39,38 @@ struct HomeView: View {
                     VStack(spacing: 16) {
                         Spacer().frame(height: 18)
 
-                        // Hilsen
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("\(vm.greeting), Johannes!")
+                        // Header — greeting + streak
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(userName.isEmpty ? vm.greeting : "\(vm.greeting), \(userName)!")
                                 .font(.largeTitle).bold()
                                 .foregroundColor(.white)
-                            Text(vm.dateString)
-                                .font(.subheadline)
-                                .foregroundColor(.white.opacity(0.6))
+
+                            HStack(spacing: 10) {
+                                Text(vm.dateString)
+                                    .font(.subheadline)
+                                    .foregroundColor(.white.opacity(0.6))
+
+                                if vm.currentStreak > 0 {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "flame.fill")
+                                            .foregroundColor(.orange)
+                                        Text(vm.currentStreak == 1
+                                             ? "1 dag streak"
+                                             : "\(vm.currentStreak) dager streak")
+                                            .font(.caption.weight(.semibold))
+                                    }
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 4)
+                                    .background(.white.opacity(0.15))
+                                    .foregroundColor(.white)
+                                    .clipShape(Capsule())
+                                }
+                            }
                         }
+                        .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal, 24)
 
-                        // 2) Stor “Start økt” som primær CTA
+                        // Primary CTA — Start økt
                         NavigationLink {
                             LiveWorkoutSetupView(store: store)
                         } label: {
@@ -86,11 +102,31 @@ struct HomeView: View {
                         .padding(.horizontal, 16)
                         .padding(.top, 6)
 
-                        // Chart / “Økter siste X dager”
+                        // Secondary CTA — Legg til manuelt
+                        Button { showManualAdd = true } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: "plus.circle")
+                                Text("Legg til manuelt")
+                                    .font(.subheadline.weight(.medium))
+                            }
+                            .foregroundStyle(.white.opacity(0.85))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(.white.opacity(0.1))
+                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                    .strokeBorder(.white.opacity(0.25), lineWidth: 1)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.horizontal, 16)
+
+                        // Chart
                         Card {
                             VStack(alignment: .leading, spacing: 10) {
                                 HStack {
-                                    Text("Økter siste \(chartRange) dager")
+                                    Text("Aktivitet")
                                         .font(.headline)
                                     Spacer()
                                     Picker("", selection: $chartRange) {
@@ -98,22 +134,20 @@ struct HomeView: View {
                                         Text("30 dager").tag(30)
                                     }
                                     .pickerStyle(.segmented)
-                                    .frame(width: 200)
+                                    .frame(width: 160)
                                 }
 
-                                // %-endring (bare hvis det finnes data i perioden)
                                 if hasWorkoutsInRange, let change = vm.percentChange(forLast: chartRange) {
                                     let arrow = change >= 0 ? "arrow.up" : "arrow.down"
                                     let color = change >= 0 ? Color.green : Color.red
                                     HStack(spacing: 6) {
                                         Image(systemName: arrow).foregroundColor(color)
-                                        Text("\(abs(Int(change))) % fra forrige periode")
+                                        Text("\(abs(Int(change))) % fra forrige periode")
                                             .font(.caption)
                                             .foregroundColor(.secondary)
                                     }
                                 }
 
-                                // 3) Tom-state i stedet for flat null-graf
                                 if !hasWorkoutsInRange {
                                     ContentUnavailableView(
                                         "Ingen økter denne perioden",
@@ -124,8 +158,7 @@ struct HomeView: View {
                                     .padding(.vertical, 8)
                                 } else {
                                     let trendColor = (vm.percentChange(forLast: chartRange) ?? 0) >= 0
-                                    ? Color.green : Color.red
-
+                                        ? Color.green : Color.red
                                     let bgGrad = LinearGradient(
                                         gradient: Gradient(colors: [
                                             trendColor.opacity(0.28),
@@ -134,7 +167,6 @@ struct HomeView: View {
                                         startPoint: .top,
                                         endPoint: .bottom
                                     )
-
                                     if chartRange == 7 {
                                         MiniChart(
                                             data: vm.counts(forLast: 7),
@@ -159,63 +191,44 @@ struct HomeView: View {
                             }
                         }
 
-                        // Hurtigvalg-grid (uten “Start økt” her, siden den er primær CTA over)
+                        // Weekly goal
                         Card {
-                            LazyVGrid(columns: gridColumns, spacing: 16) {
-                                QuickActionButton(icon: "plus.circle", title: "Legg til manuelt") {
-                                    showManualAdd = true
+                            VStack(alignment: .leading, spacing: 10) {
+                                HStack {
+                                    Text("Ukentlig mål")
+                                        .font(.headline)
+                                    Spacer()
+                                    Text("\(vm.workoutsThisWeek) av \(weeklyGoal)")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
                                 }
 
-                                NavigationLink {
-                                    WorkoutListView(store: store)
-                                } label: {
-                                    QuickActionLabel(icon: "clock.arrow.circlepath", title: "Historikk")
-                                }
-                                NavigationLink {
-                                    CalendarWorkoutView(store: store)
-                                } label: {
-                                    QuickActionLabel(icon: "calendar", title: "Kalender")
-                                }
+                                ProgressView(
+                                    value: Double(min(vm.workoutsThisWeek, weeklyGoal)),
+                                    total: Double(weeklyGoal)
+                                )
+                                .tint(vm.workoutsThisWeek >= weeklyGoal ? .green : .accentColor)
+
+                                Text(vm.workoutsThisWeek >= weeklyGoal
+                                     ? "Ukemålet nådd! Bra jobba."
+                                     : "\(weeklyGoal - vm.workoutsThisWeek) økt\(weeklyGoal - vm.workoutsThisWeek == 1 ? "" : "er") igjen denne uken")
+                                    .font(.caption)
+                                    .foregroundStyle(vm.workoutsThisWeek >= weeklyGoal ? .green : .secondary)
                             }
                         }
 
-                        // Siste økter (litt mer “treningsapp”-følelse: ikon + litt ekstra info)
-                        Card {
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text("Siste økter")
-                                    .font(.headline)
+                        // Recent workouts
+                        if !vm.recentWorkouts.isEmpty {
+                            Card {
+                                VStack(alignment: .leading, spacing: 10) {
+                                    Text("Siste økter")
+                                        .font(.headline)
 
-                                ScrollView(.horizontal, showsIndicators: false) {
-                                    HStack(spacing: 12) {
-                                        ForEach(vm.recentWorkouts) { w in
-                                            let sets = w.exercises.reduce(0) { $0 + $1.sets }
-                                            let volume = w.exercises.reduce(0.0) { acc, ex in
-                                                acc + (Double(ex.sets * ex.reps) * ex.weight)
+                                    ScrollView(.horizontal, showsIndicators: false) {
+                                        HStack(spacing: 12) {
+                                            ForEach(vm.recentWorkouts) { w in
+                                                recentWorkoutCard(w)
                                             }
-
-                                            VStack(alignment: .leading, spacing: 6) {
-                                                HStack(spacing: 8) {
-                                                    Image(systemName: w.category.iconName)
-                                                        .foregroundColor(w.category.color)
-                                                    Text(w.type)
-                                                        .font(.subheadline)
-                                                        .bold()
-                                                        .lineLimit(1)
-                                                }
-
-                                                Text(w.date, style: .date)
-                                                    .font(.caption)
-                                                    .foregroundColor(.secondary)
-
-                                                Text("\(sets) sett · \(String(format: "%.0f", volume)) kg")
-                                                    .font(.caption2)
-                                                    .foregroundColor(.secondary)
-                                            }
-                                            .padding()
-                                            .frame(width: 190, alignment: .leading)
-                                            .background(Color(.systemBackground))
-                                            .cornerRadius(12)
-                                            .shadow(color: Color(.black).opacity(0.06), radius: 3, x: 0, y: 2)
                                         }
                                     }
                                 }
@@ -230,7 +243,6 @@ struct HomeView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button {
-                        // TODO: Åpne meny senere
                     } label: {
                         Image("AppLogo")
                             .resizable()
@@ -243,6 +255,13 @@ struct HomeView: View {
                     .buttonStyle(.plain)
                     .accessibilityLabel("Meny")
                 }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { showSettings = true } label: {
+                        Image(systemName: "gearshape.fill")
+                            .imageScale(.medium)
+                            .foregroundStyle(.white)
+                    }
+                }
             }
             .sheet(isPresented: $showManualAdd) {
                 AddWorkoutView(store: store)
@@ -250,21 +269,10 @@ struct HomeView: View {
             .sheet(isPresented: $showSettings) {
                 UserSettingsView()
             }
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        showSettings = true
-                    } label: {
-                        Image(systemName: "gearshape.fill")
-                            .imageScale(.medium)
-                            .foregroundStyle(.white)
-                    }
-                }
-            }
             .navigationDestination(for: HomeNavigationCoordinator.Route.self) { route in
                 switch route {
                 case .liveWorkout:
-                    LiveWorkoutView(store: store)
+                    LiveWorkoutView(store: store, restoreIfAvailable: true)
                 }
             }
         }
@@ -275,5 +283,63 @@ struct HomeView: View {
             }
         }
     }
-}
 
+    // MARK: - Recent workout card
+
+    private func recentWorkoutCard(_ w: Workout) -> some View {
+        let title = w.type.trimmingCharacters(in: .whitespacesAndNewlines)
+        let sets = w.exercises.reduce(0) { $0 + $1.sets.count }
+        let volume = w.exercises.reduce(0.0) { $0 + $1.totalVolume }
+
+        return NavigationLink(destination: WorkoutDetailView(workout: w)) {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 8) {
+                    ZStack {
+                        Circle()
+                            .fill(w.category.color.opacity(0.15))
+                            .frame(width: 32, height: 32)
+                        Image(systemName: w.category.iconName)
+                            .font(.system(size: 14))
+                            .foregroundColor(w.category.color)
+                    }
+                    Text(title.isEmpty ? w.category.rawValue : title)
+                        .font(.subheadline.weight(.semibold))
+                        .lineLimit(1)
+                }
+
+                Text(w.date, style: .date)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    if w.duration > 0 {
+                        Label(durationString(w.duration), systemImage: "clock")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                    if sets > 0 {
+                        let volumeText = volume > 0 ? " · \(Int(volume)) kg" : ""
+                        Label("\(sets) sett\(volumeText)", systemImage: "dumbbell")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+            .padding(14)
+            .frame(width: 200, alignment: .leading)
+            .background(Color(.systemBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .shadow(color: Color.black.opacity(0.06), radius: 4, x: 0, y: 2)
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - Helpers
+
+    private func durationString(_ t: TimeInterval) -> String {
+        let s = Int(t)
+        let h = s / 3600, m = (s % 3600) / 60
+        if h > 0 { return "\(h)t \(m)m" }
+        return "\(m) min"
+    }
+}

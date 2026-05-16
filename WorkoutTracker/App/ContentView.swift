@@ -29,9 +29,9 @@ struct ContentView: View {
 
                 NavigationView {
                     WorkoutListView(store: store)
-                        .navigationTitle("Mine Økter")
+                        .navigationTitle("Historikk")
                 }
-                .tabItem { Label("Liste", systemImage: "list.bullet") }
+                .tabItem { Label("Historikk", systemImage: "clock.arrow.circlepath") }
                 .tag(1)
 
                 NavigationView {
@@ -40,6 +40,12 @@ struct ContentView: View {
                 }
                 .tabItem { Label("Kalender", systemImage: "calendar") }
                 .tag(2)
+
+                NavigationView {
+                    PRListView(store: store)
+                }
+                .tabItem { Label("Rekorder", systemImage: "trophy") }
+                .tag(3)
             }
             LiveWorkoutBanner(session: liveSession)
                 .padding(.top, 4)
@@ -49,10 +55,20 @@ struct ContentView: View {
             let status = HKHealthStore().authorizationStatus(for: .workoutType())
             showHealthOnboarding = !hasSeenHealthOnboarding && status == .notDetermined
 
-            // Hvis vi allerede har autorisasjon og har sett onboarding → importer
             if !showHealthOnboarding {
                 Task { await importService.importIfNeeded() }
             }
+
+            // Restore live session banner if the app was killed mid-workout
+            if LiveWorkoutViewModel.hasSnapshot(), let snap = LiveWorkoutViewModel.loadSnapshot() {
+                liveSession.isActive = true
+                liveSession.type = snap.draft.type
+                liveSession.category = snap.draft.category
+                let backgrounded = snap.wasRunning ? 0.0 : Date().timeIntervalSince(snap.savedAt)
+                liveSession.elapsed = Date().timeIntervalSince(snap.draft.startDate)
+                    - snap.totalPaused - backgrounded
+            }
+
             liveSession.onResumeTapped = {
                 selectedTab = 0
                 homeNav.resumeLiveRequested = true

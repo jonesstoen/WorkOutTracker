@@ -121,8 +121,6 @@ struct AddWorkoutView: View {
 
     @ViewBuilder
     private func exerciseRow(_ ex: Exercise) -> some View {
-        let weight = String(format: "%.1f", ex.weight)
-
         VStack(alignment: .leading, spacing: 4) {
             HStack {
                 Text(ex.name)
@@ -133,7 +131,7 @@ struct AddWorkoutView: View {
                     .foregroundStyle(.tertiary)
             }
 
-            Text("Sett: \(ex.sets) · Reps: \(ex.reps) · \(weight) kg")
+            Text(ex.summary)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
