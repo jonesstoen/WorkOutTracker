@@ -1,5 +1,6 @@
 import Foundation
 import HealthKit
+import OSLog
 
 /// Ansvarlig for å hente inn økter fra HealthKit og legge dem til i `WorkoutRepository`.
 ///
@@ -95,8 +96,7 @@ final class WorkoutImportService: WorkoutImporting {
                 )
             }
         } catch {
-            // TODO: Erstatt med bedre logging / bruker‑feedback
-            print("HealthKit-import feilet:", error)
+            Logger.healthKit.error("HealthKit-import feilet: \(error.localizedDescription, privacy: .public)")
         }
     }
 }

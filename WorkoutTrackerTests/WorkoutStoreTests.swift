@@ -33,12 +33,13 @@ struct WorkoutStoreTests {
         // Når vi legger til en økt i store, skal den også bli lagret i fakePersistence.
         store.add(workout)
 
-        // saveWorkouts er debounced i WorkoutStore, så vi sjekker direkte på store.workouts her.
         #expect(store.workouts.contains(workout))
+        #expect(fakePersistence.storedWorkouts.contains(workout))
 
-        // Når vi sletter økten, skal den forsvinne fra store.
+        // Når vi sletter økten, skal den forsvinne fra både store og persistens.
         store.delete(workout)
         #expect(!store.workouts.contains(workout))
+        #expect(!fakePersistence.storedWorkouts.contains(workout))
     }
 }
 

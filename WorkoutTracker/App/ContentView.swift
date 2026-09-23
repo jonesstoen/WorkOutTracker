@@ -27,21 +27,21 @@ struct ContentView: View {
                     .tabItem { Label("Oversikt", systemImage: "house") }
                     .tag(0)
 
-                NavigationView {
+                NavigationStack {
                     WorkoutListView(store: store)
                         .navigationTitle("Historikk")
                 }
                 .tabItem { Label("Historikk", systemImage: "clock.arrow.circlepath") }
                 .tag(1)
 
-                NavigationView {
+                NavigationStack {
                     CalendarWorkoutView(store: store)
                         .navigationTitle("Kalender")
                 }
                 .tabItem { Label("Kalender", systemImage: "calendar") }
                 .tag(2)
 
-                NavigationView {
+                NavigationStack {
                     PRListView(store: store)
                 }
                 .tabItem { Label("Rekorder", systemImage: "trophy") }

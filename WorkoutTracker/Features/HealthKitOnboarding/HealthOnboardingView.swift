@@ -2,6 +2,7 @@
 
 import SwiftUI
 import HealthKit
+import OSLog
 
 struct HealthOnboardingView: View {
     @Binding var isPresented: Bool
@@ -21,7 +22,7 @@ struct HealthOnboardingView: View {
                         // **FJERN** alt som setter lastHealthKitImport her
                         isPresented = false
                     } catch {
-                        print("HealthKit-autorisasjon feilet:", error)
+                        Logger.healthKit.error("HealthKit-autorisasjon feilet: \(error.localizedDescription, privacy: .public)")
                     }
                 }
             }

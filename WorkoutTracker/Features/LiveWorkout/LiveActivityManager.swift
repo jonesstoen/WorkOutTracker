@@ -1,5 +1,6 @@
 import ActivityKit
 import Foundation
+import OSLog
 
 @MainActor
 final class LiveActivityManager {
@@ -11,10 +12,15 @@ final class LiveActivityManager {
     func start(workoutType: String, categoryIcon: String, startDate: Date, exerciseCount: Int) {
         let authInfo = ActivityAuthorizationInfo()
         guard authInfo.areActivitiesEnabled else {
-            print("LiveActivity: activities not enabled (check NSSupportsLiveActivities in Info.plist)")
+            Logger.liveActivity.info("Activities not enabled (check NSSupportsLiveActivities in Info.plist)")
             return
         }
         guard activity == nil else { return }
+
+        // End activities left behind by a session that was never restored
+        for stale in Activity<WorkoutActivityAttributes>.activities {
+            Task { await stale.end(nil, dismissalPolicy: .immediate) }
+        }
 
         let attributes = WorkoutActivityAttributes(
             workoutType: workoutType.isEmpty ? "Treningsøkt" : workoutType,
@@ -34,8 +40,14 @@ final class LiveActivityManager {
                 pushType: nil
             )
         } catch {
-            print("LiveActivity start error: \(error)")
+            Logger.liveActivity.error("Start failed: \(error.localizedDescription, privacy: .public)")
         }
+    }
+
+    /// Picks up an activity that survived the app being killed, so updates reach it again.
+    func reattach() {
+        guard activity == nil else { return }
+        activity = Activity<WorkoutActivityAttributes>.activities.first
     }
 
     func update(isRunning: Bool, exerciseCount: Int, elapsed: TimeInterval) {

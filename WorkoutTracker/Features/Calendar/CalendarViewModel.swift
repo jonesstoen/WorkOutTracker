@@ -17,8 +17,6 @@ class CalendarViewModel: ObservableObject {
     @Published var selectedDate: Date = Date()
     // Hvilken måned vises
     @Published var currentMonth: Date = Date()
-
-    private var cancellables = Set<AnyCancellable>()
     private let store: WorkoutStore
 
     init(store: WorkoutStore) {
@@ -27,8 +25,7 @@ class CalendarViewModel: ObservableObject {
         workouts = store.workouts
         store.$workouts
             .receive(on: DispatchQueue.main)
-            .assign(to: \.workouts, on: self)
-            .store(in: &cancellables)
+            .assign(to: &$workouts)
     }
 
     // Alle dagene i måneden, med padding for uken start
