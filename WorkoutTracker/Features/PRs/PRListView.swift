@@ -54,7 +54,15 @@ struct PRListView: View {
                     if !filtered.isEmpty {
                         Section {
                             ForEach(filtered) { pr in
-                                prRow(pr)
+                                NavigationLink {
+                                    ExerciseHistoryView(
+                                        exerciseName: pr.exerciseName,
+                                        history: ProgressionService.history(for: pr.exerciseName, in: store.workouts),
+                                        advice: ProgressionService.overloadAdvice(for: pr.exerciseName, in: store.workouts)
+                                    )
+                                } label: {
+                                    prRow(pr)
+                                }
                             }
                         } header: {
                             Text("\(filtered.count) øvelse\(filtered.count == 1 ? "" : "r")")
@@ -90,41 +98,29 @@ struct PRListView: View {
                     .foregroundStyle(.yellow)
             }
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text(pr.exerciseName)
                     .font(.headline)
-
-                HStack(spacing: 6) {
-                    Text(weightRepsLabel(pr))
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-
-                    Text("·")
-                        .foregroundStyle(.tertiary)
-
-                    Text("Est. 1RM: \(Int(pr.e1RM.rounded())) kg")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-            }
-
-            Spacer()
-
-            VStack(alignment: .trailing, spacing: 2) {
-                Text(pr.date.formatted(date: .abbreviated, time: .omitted))
+                    .lineLimit(1)
+                Text("\(pr.weight.kgLabel) kg × \(pr.reps) reps")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Text(pr.date.formatted(.dateTime.day().month(.abbreviated).year()))
                     .font(.caption)
                     .foregroundStyle(.tertiary)
             }
+
+            Spacer(minLength: 8)
+
+            VStack(alignment: .trailing, spacing: 1) {
+                Text("\(Int(pr.e1RM.rounded())) kg")
+                    .font(.headline.monospacedDigit())
+                    .foregroundStyle(Color.accentColor)
+                Text("est. 1RM")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
         }
         .padding(.vertical, 4)
-    }
-
-    // MARK: - Helpers
-
-    private func weightRepsLabel(_ pr: ExercisePR) -> String {
-        let w = pr.weight.truncatingRemainder(dividingBy: 1) == 0
-            ? "\(Int(pr.weight))"
-            : String(format: "%.1f", pr.weight)
-        return "\(w) kg × \(pr.reps) reps"
     }
 }

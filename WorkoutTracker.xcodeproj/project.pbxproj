@@ -312,10 +312,10 @@
 				};
 			};
 			buildConfigurationList = 157A857D2E08830800CB540F /* Build configuration list for PBXProject "WorkoutTracker" */;
-			developmentRegion = en;
+			developmentRegion = nb;
 			hasScannedForEncodings = 0;
 			knownRegions = (
-				en,
+				nb,
 				Base,
 			);
 			mainGroup = 157A85792E08830800CB540F;

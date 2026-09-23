@@ -117,7 +117,7 @@ struct WorkoutDetailView: View {
                         .foregroundStyle(.secondary)
                         .frame(width: 48, alignment: .leading)
                     Spacer()
-                    Text(String(format: "%.1f kg", s.weight))
+                    Text("\(s.weight.kgLabel) kg")
                         .frame(width: 80, alignment: .center)
                     Spacer()
                     Text("\(s.reps) reps")

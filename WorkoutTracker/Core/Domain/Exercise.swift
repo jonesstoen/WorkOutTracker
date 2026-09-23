@@ -4,11 +4,27 @@ struct WorkingSet: Identifiable, Codable, Equatable {
     let id: UUID
     var reps: Int
     var weight: Double
+    /// Haket av under en live-økt. Sett lagret før dette feltet fantes, regnes som fullført.
+    var isCompleted: Bool
 
-    init(id: UUID = UUID(), reps: Int, weight: Double) {
+    init(id: UUID = UUID(), reps: Int, weight: Double, isCompleted: Bool = true) {
         self.id = id
         self.reps = reps
         self.weight = weight
+        self.isCompleted = isCompleted
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        reps = try c.decode(Int.self, forKey: .reps)
+        weight = try c.decode(Double.self, forKey: .weight)
+        isCompleted = try c.decodeIfPresent(Bool.self, forKey: .isCompleted) ?? true
+    }
+
+    /// Samme reps og vekt som et nytt, ikke fullført sett (til planlegging).
+    var planned: WorkingSet {
+        WorkingSet(reps: reps, weight: weight, isCompleted: false)
     }
 }
 
@@ -62,12 +78,26 @@ struct Exercise: Identifiable, Codable, Equatable {
         let repsStr = allSameReps ? "\(sets[0].reps)" : sets.map { "\($0.reps)" }.joined(separator: "/")
         let weightStr: String
         if allSameWeight {
-            weightStr = String(format: "%.1f kg", sets[0].weight)
+            weightStr = "\(sets[0].weight.kgLabel) kg"
         } else {
             let minW = sets.map(\.weight).min()!
             let maxW = sets.map(\.weight).max()!
-            weightStr = String(format: "%.1f–%.1f kg", minW, maxW)
+            weightStr = "\(minW.kgLabel)–\(maxW.kgLabel) kg"
         }
         return "\(n) sett · \(repsStr) reps · \(weightStr)"
+    }
+}
+
+extension Double {
+    /// Vekt uten unødvendige desimaler, med lokal desimalskilletegn ("80", "82,5").
+    var kgLabel: String {
+        formatted(.number.precision(.fractionLength(0...1)))
+    }
+}
+
+extension String {
+    /// Normalisert nøkkel for å matche øvelsesnavn ("Benkpress " == "benkpress").
+    var exerciseKey: String {
+        trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
     }
 }

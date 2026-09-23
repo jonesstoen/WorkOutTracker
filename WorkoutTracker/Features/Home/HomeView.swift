@@ -171,8 +171,7 @@ struct HomeView: View {
                                         MiniChart(
                                             data: vm.counts(forLast: 7),
                                             labels: vm.labels(forLast: 7),
-                                            lineColor: trendColor,
-                                            pointColor: trendColor,
+                                            barColor: trendColor,
                                             backgroundGradient: bgGrad
                                         )
                                         .frame(height: 120)
@@ -181,8 +180,7 @@ struct HomeView: View {
                                         MiniChart(
                                             data: weekly.counts,
                                             labels: weekly.labels,
-                                            lineColor: trendColor,
-                                            pointColor: trendColor,
+                                            barColor: trendColor,
                                             backgroundGradient: bgGrad
                                         )
                                         .frame(height: 120)
@@ -215,6 +213,12 @@ struct HomeView: View {
                                     .font(.caption)
                                     .foregroundStyle(vm.workoutsThisWeek >= weeklyGoal ? .green : .secondary)
                             }
+                        }
+
+                        // Volume per muscle group
+                        let volumes = vm.muscleVolumes
+                        if !volumes.isEmpty {
+                            MuscleVolumeCard(volumes: volumes)
                         }
 
                         // Recent workouts

@@ -7,6 +7,7 @@ struct LiveWorkoutView: View {
     @StateObject private var vm: LiveWorkoutViewModel
     @State private var showExitConfirm = false
     @State private var showFinishConfirm = false
+    @State private var showIncompleteConfirm = false
     @State private var showNotes = false
 
     init(
@@ -31,6 +32,11 @@ struct LiveWorkoutView: View {
         ScrollView {
             VStack(spacing: 0) {
                 timerBar
+
+                if vm.restTimerActive {
+                    restTimerBanner
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
 
                 if vm.draft.exercises.isEmpty {
                     emptyState
@@ -87,20 +93,32 @@ struct LiveWorkoutView: View {
         }
         .alert("Fullføre og lagre?", isPresented: $showFinishConfirm) {
             Button("Avbryt", role: .cancel) { }
-            Button("Fullfør") {
-                vm.finish()
-                LiveSessionCoordinator.shared.isActive = false
-                dismiss()
-            }
+            Button("Fullfør") { finishAndDismiss() }
         } message: {
             Text("Økten er veldig kort eller uten øvelser. Vil du likevel lagre?")
+        }
+        .confirmationDialog(
+            vm.draft.incompleteSetCount == 1
+                ? "1 sett er ikke haket av"
+                : "\(vm.draft.incompleteSetCount) sett er ikke haket av",
+            isPresented: $showIncompleteConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Lagre bare fullførte") { finishAndDismiss() }
+            Button("Marker alle som fullført") {
+                vm.markAllCompleted()
+                finishAndDismiss()
+            }
+            Button("Fortsett økten", role: .cancel) { }
+        } message: {
+            Text("Sett som ikke er haket av, blir ikke lagret.")
         }
         .sheet(isPresented: $vm.showExerciseSheet) {
             let exercisesBinding = Binding<[Exercise]>(
                 get: { vm.draft.exercises },
                 set: { vm.draft.exercises = $0 }
             )
-            NewExerciseSheet(exercises: exercisesBinding)
+            NewExerciseSheet(exercises: exercisesBinding) { vm.plannedSets(for: $0) }
         }
         .onAppear {
             let s = LiveSessionCoordinator.shared
@@ -158,6 +176,7 @@ struct LiveWorkoutView: View {
                 ExerciseCard(
                     exercise: exerciseBinding,
                     index: i,
+                    lastSession: vm.lastSession(for: vm.draft.exercises[i].name),
                     onDelete: {
                         withAnimation {
                             var updated = vm.draft.exercises
@@ -167,6 +186,7 @@ struct LiveWorkoutView: View {
                             }
                         }
                     },
+                    onSetCompleted: { withAnimation(.spring(response: 0.3)) { vm.startRestTimer() } },
                     isPR: { weight, reps in
                         vm.isPR(exerciseName: vm.draft.exercises[i].name, weight: weight, reps: reps)
                     }
@@ -175,6 +195,56 @@ struct LiveWorkoutView: View {
         }
         .padding(.horizontal, 16)
         .padding(.top, 12)
+    }
+
+    // MARK: – Rest timer banner
+
+    private var restTimerBanner: some View {
+        HStack(spacing: 16) {
+            ZStack {
+                Circle()
+                    .stroke(Color.accentColor.opacity(0.2), lineWidth: 3)
+                    .frame(width: 48, height: 48)
+                Circle()
+                    .trim(from: 0, to: CGFloat(vm.restSecondsRemaining) / CGFloat(vm.restDuration))
+                    .stroke(vm.restSecondsRemaining <= 10 ? Color.orange : Color.accentColor,
+                            style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                    .frame(width: 48, height: 48)
+                    .rotationEffect(.degrees(-90))
+                    .animation(.linear(duration: 1), value: vm.restSecondsRemaining)
+                Text("\(vm.restSecondsRemaining)")
+                    .font(.system(size: 14, weight: .bold, design: .monospaced))
+                    .foregroundStyle(vm.restSecondsRemaining <= 10 ? .orange : .primary)
+            }
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Hviler")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Text(restTimeString(vm.restSecondsRemaining))
+                    .font(.system(size: 22, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(vm.restSecondsRemaining <= 10 ? .orange : .primary)
+            }
+
+            Spacer()
+
+            Button {
+                withAnimation(.spring(response: 0.3)) { vm.skipRest() }
+            } label: {
+                Text("Hopp over")
+                    .font(.subheadline.weight(.medium))
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(Color.accentColor.opacity(0.12))
+                    .foregroundStyle(Color.accentColor)
+                    .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 12)
+        .background(Color(.systemBackground))
+        .overlay(alignment: .bottom) { Divider() }
     }
 
     // MARK: – Timer bar
@@ -190,6 +260,7 @@ struct LiveWorkoutView: View {
                     .foregroundStyle(vm.isRunning ? Color.accentColor : .orange)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel(vm.isRunning ? "Pause" : "Fortsett")
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(timeString(vm.elapsed))
@@ -210,6 +281,7 @@ struct LiveWorkoutView: View {
                     .foregroundStyle(.green)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Fullfør økt")
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 14)
@@ -310,13 +382,23 @@ struct LiveWorkoutView: View {
 
     @MainActor
     private func handleFinishTapped() async {
-        if vm.elapsed < 60 || vm.draft.exercises.isEmpty {
+        if vm.draft.incompleteSetCount > 0 {
+            showIncompleteConfirm = true
+        } else if vm.elapsed < 60 || vm.draft.exercises.isEmpty {
             showFinishConfirm = true
         } else {
-            vm.finish()
-            LiveSessionCoordinator.shared.isActive = false
-            dismiss()
+            finishAndDismiss()
         }
+    }
+
+    private func finishAndDismiss() {
+        vm.finish()
+        LiveSessionCoordinator.shared.isActive = false
+        dismiss()
+    }
+
+    private func restTimeString(_ s: Int) -> String {
+        String(format: "%d:%02d", s / 60, s % 60)
     }
 
     private func timeString(_ t: TimeInterval) -> String {
@@ -325,314 +407,5 @@ struct LiveWorkoutView: View {
         return h > 0
             ? String(format: "%d:%02d:%02d", h, m, sec)
             : String(format: "%02d:%02d", m, sec)
-    }
-}
-
-// MARK: – Exercise card
-
-private struct ExerciseCard: View {
-    @Binding var exercise: Exercise
-    let index: Int
-    let onDelete: () -> Void
-    let isPR: (Double, Int) -> Bool
-
-    @State private var showRename = false
-    @State private var pendingName = ""
-
-    private static let palette: [Color] = [
-        .blue, .orange, .purple, .green, .red, .pink, .teal, .yellow
-    ]
-    private var accentColor: Color { Self.palette[index % Self.palette.count] }
-
-    var body: some View {
-        HStack(spacing: 0) {
-            Rectangle()
-                .fill(accentColor)
-                .frame(width: 5)
-
-            VStack(spacing: 0) {
-                headerRow
-                Divider()
-                columnHeader
-                setRows
-                addSetButton
-            }
-        }
-        .background(Color(.systemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .shadow(color: .black.opacity(0.06), radius: 6, y: 3)
-        .alert("Gi øvelsen nytt navn", isPresented: $showRename) {
-            TextField("Navn", text: $pendingName)
-                .textInputAutocapitalization(.sentences)
-            Button("Avbryt", role: .cancel) { }
-            Button("Lagre") {
-                let t = pendingName.trimmingCharacters(in: .whitespacesAndNewlines)
-                if !t.isEmpty { exercise.name = t }
-            }
-        }
-    }
-
-    private var headerRow: some View {
-        HStack(spacing: 10) {
-            ZStack {
-                Circle()
-                    .fill(accentColor.opacity(0.15))
-                    .frame(width: 28, height: 28)
-                Text("\(index + 1)")
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(accentColor)
-            }
-
-            Text(exercise.name)
-                .font(.headline)
-
-            Button {
-                pendingName = exercise.name
-                showRename = true
-            } label: {
-                Image(systemName: "pencil")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            .buttonStyle(.plain)
-
-            Spacer()
-
-            if exercise.totalVolume > 0 {
-                Text("\(Int(exercise.totalVolume)) kg")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            Button(role: .destructive, action: onDelete) {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.title3)
-                    .foregroundStyle(Color(.systemGray4))
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
-    }
-
-    private var columnHeader: some View {
-        HStack(spacing: 0) {
-            Text("SETT")
-                .frame(width: 48, alignment: .leading)
-            Spacer()
-            Text("KG")
-                .frame(width: 90, alignment: .center)
-            Spacer()
-            Text("REPS")
-                .frame(width: 90, alignment: .center)
-        }
-        .font(.system(size: 11, weight: .semibold))
-        .foregroundStyle(.secondary)
-        .padding(.horizontal, 14)
-        .padding(.vertical, 7)
-        .background(Color(.tertiarySystemBackground))
-    }
-
-    private var setRows: some View {
-        ForEach(exercise.sets.indices, id: \.self) { i in
-            let setBinding = Binding<WorkingSet>(
-                get: { exercise.sets[i] },
-                set: { exercise.sets[i] = $0 }
-            )
-            let showPR = isPR(exercise.sets[i].weight, exercise.sets[i].reps)
-            LiveSetRow(setNumber: i + 1, set: setBinding, showPR: showPR) {
-                withAnimation {
-                    var updated = exercise.sets
-                    updated.remove(at: i)
-                    exercise.sets = updated
-                }
-            }
-            if i < exercise.sets.count - 1 {
-                Divider().padding(.leading, 14)
-            }
-        }
-    }
-
-    private var addSetButton: some View {
-        Button {
-            let last = exercise.sets.last ?? WorkingSet(reps: 10, weight: 0)
-            withAnimation(.easeInOut(duration: 0.15)) {
-                exercise.sets.append(WorkingSet(reps: last.reps, weight: last.weight))
-            }
-        } label: {
-            HStack(spacing: 6) {
-                Image(systemName: "plus")
-                Text("Legg til sett")
-            }
-            .font(.subheadline)
-            .foregroundStyle(Color.accentColor)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 12)
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-// MARK: – Set row
-
-private struct LiveSetRow: View {
-    let setNumber: Int
-    @Binding var set: WorkingSet
-    let showPR: Bool
-    let onDelete: () -> Void
-
-    @State private var showPicker = false
-
-    var body: some View {
-        HStack(spacing: 0) {
-            Text("\(setNumber)")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .frame(width: 40, alignment: .leading)
-
-            Spacer()
-
-            Button { showPicker = true } label: {
-                HStack(spacing: 0) {
-                    // Weight pill
-                    HStack(spacing: 4) {
-                        Text(weightLabel(set.weight))
-                            .font(.subheadline.weight(.semibold))
-                            .frame(width: 54, alignment: .center)
-                            .padding(.vertical, 7)
-                            .background(Color(.tertiarySystemBackground))
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
-                        Text("kg")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    .frame(width: 86)
-
-                    Spacer()
-
-                    // Reps pill
-                    HStack(spacing: 4) {
-                        Text("\(set.reps)")
-                            .font(.subheadline.weight(.semibold))
-                            .frame(width: 44, alignment: .center)
-                            .padding(.vertical, 7)
-                            .background(Color(.tertiarySystemBackground))
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
-                        Text("reps")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    .frame(width: 86)
-                }
-            }
-            .buttonStyle(.plain)
-
-            Image(systemName: "trophy.fill")
-                .font(.caption)
-                .foregroundStyle(.yellow)
-                .opacity(showPR ? 1 : 0)
-                .frame(width: 20)
-                .padding(.leading, 4)
-
-            Button(role: .destructive, action: onDelete) {
-                Image(systemName: "minus.circle.fill")
-                    .foregroundStyle(.red.opacity(0.7))
-                    .font(.body)
-            }
-            .buttonStyle(.plain)
-            .padding(.leading, 8)
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 8)
-        .sheet(isPresented: $showPicker) {
-            SetPickerSheet(weight: $set.weight, reps: $set.reps)
-                .presentationDetents([.height(300)])
-                .presentationDragIndicator(.visible)
-        }
-    }
-
-    private func weightLabel(_ w: Double) -> String {
-        w.truncatingRemainder(dividingBy: 1) == 0 ? "\(Int(w))" : String(format: "%.1f", w)
-    }
-}
-
-// MARK: – Set picker sheet
-
-private struct SetPickerSheet: View {
-    @Binding var weight: Double
-    @Binding var reps: Int
-    @Environment(\.dismiss) private var dismiss
-
-    @State private var selectedWeight: Double
-    @State private var selectedReps: Int
-
-    private static let weights: [Double] = Array(stride(from: 0.0, through: 300.0, by: 0.5))
-    private static let repValues: [Int]  = Array(1...50)
-
-    init(weight: Binding<Double>, reps: Binding<Int>) {
-        _weight = weight
-        _reps   = reps
-        let snapped = max(0, min(300, (weight.wrappedValue * 2).rounded() / 2))
-        _selectedWeight = State(initialValue: snapped)
-        _selectedReps   = State(initialValue: max(1, min(50, reps.wrappedValue)))
-    }
-
-    var body: some View {
-        VStack(spacing: 0) {
-            // Handle + header
-            HStack {
-                Text("Vekt og reps")
-                    .font(.headline)
-                Spacer()
-                Button("Ferdig") {
-                    weight = selectedWeight
-                    reps   = selectedReps
-                    dismiss()
-                }
-                .font(.headline)
-                .foregroundStyle(Color.accentColor)
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 20)
-            .padding(.bottom, 12)
-
-            Divider()
-
-            // Column labels
-            HStack(spacing: 0) {
-                Text("KG")
-                    .frame(maxWidth: .infinity)
-                Text("REPS")
-                    .frame(maxWidth: .infinity)
-            }
-            .font(.system(size: 12, weight: .semibold))
-            .foregroundStyle(.secondary)
-            .padding(.top, 8)
-
-            // Wheels
-            HStack(spacing: 0) {
-                Picker("Vekt", selection: $selectedWeight) {
-                    ForEach(Self.weights, id: \.self) { w in
-                        Text(w.truncatingRemainder(dividingBy: 1) == 0
-                             ? "\(Int(w))"
-                             : String(format: "%.1f", w))
-                            .tag(w)
-                    }
-                }
-                .pickerStyle(.wheel)
-                .frame(maxWidth: .infinity)
-
-                Picker("Reps", selection: $selectedReps) {
-                    ForEach(Self.repValues, id: \.self) { r in
-                        Text("\(r)").tag(r)
-                    }
-                }
-                .pickerStyle(.wheel)
-                .frame(maxWidth: .infinity)
-            }
-            .onChange(of: selectedWeight) { weight = $0 }
-            .onChange(of: selectedReps)   { reps   = $0 }
-        }
-        .background(Color(.systemBackground))
     }
 }

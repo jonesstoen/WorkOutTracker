@@ -11,8 +11,7 @@ import Charts
 struct MiniChart: View {
     let data: [Int]
     let labels: [String]
-    var lineColor: Color = .accentColor
-    var pointColor: Color = .accentColor
+    var barColor: Color = .accentColor
     var backgroundGradient: LinearGradient? = nil
 
     @State private var selectedIndex: Int? = nil
@@ -28,22 +27,13 @@ struct MiniChart: View {
 
             Chart {
                 ForEach(Array(data.enumerated()), id: \.offset) { idx, val in
-                    // Linja
-                    LineMark(
+                    // Søyler passer for små heltall (antall økter): ingen glatting som gir falske verdier
+                    BarMark(
                         x: .value("Dag", labels[idx]),
                         y: .value("Økter", val)
                     )
-                    .interpolationMethod(.catmullRom)
-                    .foregroundStyle(lineColor)
-                    .lineStyle(StrokeStyle(lineWidth: 2))
-
-                    // Punktet + annotation
-                    PointMark(
-                        x: .value("Dag", labels[idx]),
-                        y: .value("Økter", val)
-                    )
-                    .symbolSize(60)
-                    .foregroundStyle(pointColor)
+                    .foregroundStyle(barColor.opacity(selectedIndex == nil || selectedIndex == idx ? 1 : 0.4))
+                    .cornerRadius(4)
                     .annotation(position: .top) {
                         if selectedIndex == idx {
                             Text("\(val)")

@@ -37,7 +37,12 @@ class AddWorkoutViewModel: ObservableObject {
             date: date,
             type: type.trimmingCharacters(in: .whitespacesAndNewlines),
             category: category,
-            exercises: exercises,
+            // Logged after the fact, so every set counts as done
+            exercises: exercises.map { exercise in
+                var done = exercise
+                for i in done.sets.indices { done.sets[i].isCompleted = true }
+                return done
+            },
             notes: notes.trimmingCharacters(in: .whitespacesAndNewlines)
         )
         repository.add(workout)

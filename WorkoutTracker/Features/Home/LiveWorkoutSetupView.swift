@@ -37,18 +37,32 @@ struct LiveWorkoutSetupView: View {
             VStack(spacing: 16) {
                 categoryPicker
                 nameField
+                if let previous = previousWorkout, plannedExercises.isEmpty {
+                    repeatCard(previous)
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                }
                 exercisePlanner
-                startButton
             }
             .padding(.horizontal, 16)
             .padding(.top, 8)
-            .padding(.bottom, 32)
+            .padding(.bottom, 16)
         }
         .background(Color(.systemGroupedBackground))
+        // Start button stays pinned above the home indicator, always reachable
+        .safeAreaInset(edge: .bottom) {
+            startButton
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
+                .padding(.bottom, 8)
+                .background(Color(.systemGroupedBackground).opacity(0.95))
+        }
+        .toolbar(.hidden, for: .tabBar)
         .navigationTitle("Start økt")
         .navigationBarTitleDisplayMode(.large)
         .sheet(isPresented: $showExerciseSheet) {
-            NewExerciseSheet(exercises: $plannedExercises)
+            NewExerciseSheet(exercises: $plannedExercises) { name in
+                ProgressionService.plannedSets(for: name, in: store.workouts)
+            }
         }
         .onDisappear {
             let trimmed = type.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -155,6 +169,48 @@ struct LiveWorkoutSetupView: View {
         .background(Color(.systemBackground))
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .shadow(color: .black.opacity(0.05), radius: 4, y: 2)
+    }
+
+    // MARK: - Repeat previous workout
+
+    private var previousWorkout: Workout? {
+        ProgressionService.lastWorkout(ofType: type, in: store.workouts)
+    }
+
+    private func repeatCard(_ previous: Workout) -> some View {
+        Button {
+            withAnimation(.spring(response: 0.3)) {
+                plannedExercises = ProgressionService.plannedExercises(from: previous)
+            }
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "arrow.clockwise.circle.fill")
+                    .font(.system(size: 30))
+                    .foregroundStyle(category.color)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Gjenta \(previous.type.trimmingCharacters(in: .whitespaces)) fra \(previous.date.formatted(.dateTime.day().month(.abbreviated)))")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                    Text(previous.exercises.map(\.name).joined(separator: " · "))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+                Spacer(minLength: 4)
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(16)
+            .background(category.color.opacity(0.1))
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .strokeBorder(category.color.opacity(0.3), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Exercise planner

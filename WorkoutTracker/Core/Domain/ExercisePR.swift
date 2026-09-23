@@ -1,7 +1,7 @@
 import Foundation
 
 struct ExercisePR: Identifiable {
-    var id: String { exerciseName.lowercased() }
+    var id: String { exerciseName.exerciseKey }
     let exerciseName: String
     let weight: Double
     let reps: Int
