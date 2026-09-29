@@ -141,15 +141,8 @@ struct CalendarWorkoutView: View {
     // MARK: - Day panel
 
     private var dayPanel: some View {
-        let formatter: DateFormatter = {
-            let df = DateFormatter()
-            df.locale = Locale.current
-            df.dateFormat = "d. MMM yyyy"
-            return df
-        }()
-
-        return VStack(alignment: .leading, spacing: 10) {
-            Text("Økter \(formatter.string(from: vm.selectedDate))")
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Økter \(vm.selectedDate.formatted(.dateTime.day().month(.abbreviated).year()))")
                 .font(.headline)
                 .padding(.horizontal, 4)
 

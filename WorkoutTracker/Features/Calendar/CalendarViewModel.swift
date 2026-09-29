@@ -18,9 +18,11 @@ class CalendarViewModel: ObservableObject {
     // Hvilken måned vises
     @Published var currentMonth: Date = Date()
     private let store: WorkoutStore
+    private let calendar: Calendar
 
-    init(store: WorkoutStore) {
+    init(store: WorkoutStore, calendar: Calendar = .current) {
         self.store = store
+        self.calendar = calendar
         // Abonner på butikken
         workouts = store.workouts
         store.$workouts
@@ -28,31 +30,23 @@ class CalendarViewModel: ObservableObject {
             .assign(to: &$workouts)
     }
 
-    // Alle dagene i måneden, med padding for uken start
+    // Alle dagene i måneden, med tomme celler før dag 1 slik at den havner under riktig ukedag
     var daysInMonth: [Date?] {
-        guard let monthInterval = Calendar.current.dateInterval(
-                of: .month,
-                for: currentMonth
-        ) else { return [] }
+        guard let monthInterval = calendar.dateInterval(of: .month, for: currentMonth) else { return [] }
 
-        let dates = Calendar.current.generateDates(
-            inside: monthInterval,
-            matching: DateComponents(hour: 0, minute: 0, second: 0)
-        )
+        let dates = calendar.generateDates(inside: monthInterval)
+        guard let firstDate = dates.first else { return [] }
 
-        guard let firstDate = dates.first else {
-            return []
-        }
-        let firstWeekday = Calendar.current.component(.weekday, from: firstDate)
-        let paddingDays = firstWeekday - 1
+        // Kolonne 0 er kalenderens første ukedag (mandag i Norge, søndag i USA)
+        let weekday = calendar.component(.weekday, from: firstDate)
+        let paddingDays = (weekday - calendar.firstWeekday + 7) % 7
 
-        return Array(repeating: nil, count: paddingDays)
-             + dates.map { Optional($0) }
+        return Array(repeating: nil, count: paddingDays) + dates.map { Optional($0) }
     }
 
     // Flytt måneden frem og tilbake
     func changeMonth(by value: Int) {
-        if let newDate = Calendar.current.date(
+        if let newDate = calendar.date(
             byAdding: .month,
             value: value,
             to: currentMonth
@@ -61,15 +55,10 @@ class CalendarViewModel: ObservableObject {
         }
     }
 
-    // Har det vært en økt på denne datoen?
-    func hasWorkout(on date: Date) -> Bool {
-        workouts.contains { Calendar.current.isDate($0.date, inSameDayAs: date) }
-    }
-
     // Økter for den valgte dagen
     var workoutsForSelectedDate: [Workout] {
         workouts.filter {
-            Calendar.current.isDate($0.date, inSameDayAs: selectedDate)
+            calendar.isDate($0.date, inSameDayAs: selectedDate)
         }
     }
 
@@ -83,7 +72,7 @@ class CalendarViewModel: ObservableObject {
     func workoutColors(on date: Date) -> [Color] {
         Array(
             workouts
-                .filter { Calendar.current.isDate($0.date, inSameDayAs: date) }
+                .filter { calendar.isDate($0.date, inSameDayAs: date) }
                 .prefix(3)
                 .map { $0.category.color }
         )
@@ -91,7 +80,7 @@ class CalendarViewModel: ObservableObject {
 
     /// Sletter én økt fra butikken
     func delete(_ workout: Workout) {
-        store.workouts.removeAll { $0.id == workout.id }
+        store.delete(workout)
     }
 }
 
