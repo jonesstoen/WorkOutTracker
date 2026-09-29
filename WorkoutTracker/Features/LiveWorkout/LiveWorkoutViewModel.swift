@@ -22,7 +22,7 @@ final class LiveWorkoutViewModel: ObservableObject {
     private let repository: WorkoutRepository
     private var pauseBeganAt: Date?
     private var totalPaused: TimeInterval = 0
-    private var historicalPRs: [String: Double] = [:]
+    private var historicalPRs: [String: ExercisePR] = [:]
     private var snapshotWorkouts: [Workout] = []
 
     private static let snapshotKey = "liveSessionSnapshot"
@@ -40,8 +40,7 @@ final class LiveWorkoutViewModel: ObservableObject {
         self.repository = store
         self.snapshotWorkouts = store.workouts
 
-        let prMap = PRService.computePRs(from: store.workouts)
-        historicalPRs = prMap.mapValues { $0.e1RM }
+        historicalPRs = PRService.computePRs(from: store.workouts)
 
         if restoreIfAvailable, let snapshot = Self.loadSnapshot() {
             draft = snapshot.draft
@@ -212,9 +211,8 @@ final class LiveWorkoutViewModel: ObservableObject {
     // MARK: - PR check
 
     func isPR(exerciseName: String, weight: Double, reps: Int) -> Bool {
-        guard weight > 0, reps > 0 else { return false }
         guard let best = historicalPRs[exerciseName.exerciseKey] else { return false }
-        return PRService.e1RM(weight: weight, reps: reps) > best
+        return PRService.isRecord(weight: weight, reps: reps, comparedTo: best)
     }
 
     // MARK: - Persistence

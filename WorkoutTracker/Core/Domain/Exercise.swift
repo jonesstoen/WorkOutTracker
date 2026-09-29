@@ -1,6 +1,6 @@
 import Foundation
 
-struct WorkingSet: Identifiable, Codable, Equatable {
+struct WorkingSet: Identifiable, Codable, Hashable {
     let id: UUID
     var reps: Int
     var weight: Double
@@ -28,7 +28,7 @@ struct WorkingSet: Identifiable, Codable, Equatable {
     }
 }
 
-struct Exercise: Identifiable, Codable, Equatable {
+struct Exercise: Identifiable, Codable, Hashable {
     let id: UUID
     var name: String
     var sets: [WorkingSet]
@@ -68,6 +68,11 @@ struct Exercise: Identifiable, Codable, Equatable {
 
     var totalVolume: Double {
         sets.reduce(0) { $0 + Double($1.reps) * $1.weight }
+    }
+
+    /// Volume of the sets checked off so far (planned sets not included)
+    var completedVolume: Double {
+        sets.filter(\.isCompleted).reduce(0) { $0 + Double($1.reps) * $1.weight }
     }
 
     var summary: String {

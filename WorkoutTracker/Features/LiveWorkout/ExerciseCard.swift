@@ -73,7 +73,7 @@ struct ExerciseCard: View {
                     HStack(spacing: 4) {
                         Image(systemName: "clock.arrow.circlepath")
                             .font(.caption2)
-                        Text("\(last.weight.kgLabel) kg × \(last.reps) reps")
+                        Text(last.weight > 0 ? "\(last.weight.kgLabel) kg × \(last.reps) reps" : "\(last.reps) reps")
                             .font(.caption.weight(.medium))
                     }
                     .foregroundStyle(accentColor)
@@ -86,8 +86,8 @@ struct ExerciseCard: View {
 
             Spacer()
 
-            if exercise.totalVolume > 0 {
-                Text("\(Int(exercise.totalVolume)) kg")
+            if exercise.completedVolume > 0 {
+                Text("\(Int(exercise.completedVolume)) kg")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

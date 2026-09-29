@@ -27,23 +27,34 @@ struct ExerciseHistoryView: View {
 
     // MARK: - Chart
 
+    /// Only bodyweight sets logged: track reps instead of estimated 1RM
+    private var isBodyweight: Bool { history.allSatisfy { $0.weight == 0 } }
+
+    private func chartValue(_ point: ExerciseDataPoint) -> Double {
+        isBodyweight ? Double(point.reps) : point.e1RM
+    }
+
+    private func valueLabel(_ value: Double) -> String {
+        isBodyweight ? "\(Int(value)) reps" : "\(Int(value.rounded())) kg"
+    }
+
     private var chartCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Utvikling")
                         .font(.headline)
-                    Text("Estimert 1RM over tid")
+                    Text(isBodyweight ? "Flest reps per økt" : "Estimert 1RM over tid")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
-                if let best = history.max(by: { $0.e1RM < $1.e1RM }) {
+                if let best = history.max(by: { chartValue($0) < chartValue($1) }) {
                     VStack(alignment: .trailing, spacing: 2) {
-                        Text("Beste 1RM")
+                        Text(isBodyweight ? "Rekord" : "Beste 1RM")
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                        Text("\(Int(best.e1RM.rounded())) kg")
+                        Text(valueLabel(chartValue(best)))
                             .font(.headline)
                             .foregroundStyle(Color.accentColor)
                     }
@@ -53,7 +64,7 @@ struct ExerciseHistoryView: View {
             Chart(history) { point in
                 AreaMark(
                     x: .value("Dato", point.date),
-                    y: .value("1RM", point.e1RM)
+                    y: .value("Verdi", chartValue(point))
                 )
                 .foregroundStyle(
                     LinearGradient(
@@ -64,13 +75,13 @@ struct ExerciseHistoryView: View {
                 )
                 LineMark(
                     x: .value("Dato", point.date),
-                    y: .value("1RM", point.e1RM)
+                    y: .value("Verdi", chartValue(point))
                 )
                 .foregroundStyle(Color.accentColor)
                 .lineStyle(StrokeStyle(lineWidth: 2.5))
                 PointMark(
                     x: .value("Dato", point.date),
-                    y: .value("1RM", point.e1RM)
+                    y: .value("Verdi", chartValue(point))
                 )
                 .foregroundStyle(Color.accentColor)
                 .symbolSize(40)
@@ -87,7 +98,7 @@ struct ExerciseHistoryView: View {
                     AxisGridLine().foregroundStyle(Color(.separator).opacity(0.4))
                     AxisValueLabel {
                         if let v = value.as(Double.self) {
-                            Text("\(Int(v)) kg").font(.caption2)
+                            Text(valueLabel(v)).font(.caption2)
                         }
                     }
                 }
@@ -149,16 +160,16 @@ struct ExerciseHistoryView: View {
                         VStack(alignment: .leading, spacing: 3) {
                             Text(point.date.formatted(date: .abbreviated, time: .omitted))
                                 .font(.subheadline.weight(.medium))
-                            Text("\(point.weight.kgLabel) kg × \(point.reps) reps")
+                            Text(point.weight > 0 ? "\(point.weight.kgLabel) kg × \(point.reps) reps" : "Kroppsvekt × \(point.reps) reps")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
                         Spacer()
                         VStack(alignment: .trailing, spacing: 2) {
-                            Text("Est. 1RM")
+                            Text(isBodyweight ? "Reps" : "Est. 1RM")
                                 .font(.caption2)
                                 .foregroundStyle(.tertiary)
-                            Text("\(Int(point.e1RM.rounded())) kg")
+                            Text(valueLabel(chartValue(point)))
                                 .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(idx == 0 ? Color.accentColor : .primary)
                         }

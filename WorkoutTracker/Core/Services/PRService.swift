@@ -8,27 +8,40 @@ enum PRService {
     }
 
     /// Returns the best set per exercise across all workouts, keyed by normalized exercise name (`exerciseKey`).
-    /// Workouts are processed chronologically so later dates win ties.
+    /// Weighted sets are ranked by e1RM; exercises only ever done with bodyweight are ranked by reps.
+    /// Workouts are processed chronologically so the first time a record is reached wins ties.
     static func computePRs(from workouts: [Workout]) -> [String: ExercisePR] {
         var prs: [String: ExercisePR] = [:]
 
         for workout in workouts.sorted(by: { $0.date < $1.date }) {
             for exercise in workout.exercises {
                 let key = exercise.name.exerciseKey
-                for set in exercise.sets {
-                    guard set.weight > 0, set.reps > 0 else { continue }
-                    let score = e1RM(weight: set.weight, reps: set.reps)
-                    if let existing = prs[key], score <= existing.e1RM { continue }
+                for set in exercise.sets where set.isCompleted && set.reps > 0 && set.weight >= 0 {
+                    if let existing = prs[key], !isRecord(weight: set.weight, reps: set.reps, comparedTo: existing) {
+                        continue
+                    }
                     prs[key] = ExercisePR(
                         exerciseName: exercise.name,
                         weight: set.weight,
                         reps: set.reps,
-                        e1RM: score,
+                        e1RM: e1RM(weight: set.weight, reps: set.reps),
                         date: workout.date
                     )
                 }
             }
         }
         return prs
+    }
+
+    /// Whether a set beats the current record: any weighted set beats a bodyweight record,
+    /// weighted sets compare e1RM and bodyweight sets compare reps.
+    static func isRecord(weight: Double, reps: Int, comparedTo pr: ExercisePR) -> Bool {
+        guard reps > 0 else { return false }
+        switch (weight > 0, pr.isBodyweight) {
+        case (true, true):   return true
+        case (true, false):  return e1RM(weight: weight, reps: reps) > pr.e1RM
+        case (false, true):  return reps > pr.reps
+        case (false, false): return false
+        }
     }
 }

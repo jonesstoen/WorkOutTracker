@@ -102,7 +102,7 @@ struct PRListView: View {
                 Text(pr.exerciseName)
                     .font(.headline)
                     .lineLimit(1)
-                Text("\(pr.weight.kgLabel) kg × \(pr.reps) reps")
+                Text(pr.isBodyweight ? "Kroppsvekt × \(pr.reps) reps" : "\(pr.weight.kgLabel) kg × \(pr.reps) reps")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                 Text(pr.date.formatted(.dateTime.day().month(.abbreviated).year()))
@@ -113,10 +113,10 @@ struct PRListView: View {
             Spacer(minLength: 8)
 
             VStack(alignment: .trailing, spacing: 1) {
-                Text("\(Int(pr.e1RM.rounded())) kg")
+                Text(pr.isBodyweight ? "\(pr.reps) reps" : "\(Int(pr.e1RM.rounded())) kg")
                     .font(.headline.monospacedDigit())
                     .foregroundStyle(Color.accentColor)
-                Text("est. 1RM")
+                Text(pr.isBodyweight ? "flest reps" : "est. 1RM")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }

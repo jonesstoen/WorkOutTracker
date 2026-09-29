@@ -10,22 +10,20 @@ struct ExerciseDataPoint: Identifiable {
 
 enum ProgressionService {
 
-    // All best-set data points for an exercise, oldest first
+    // Best set per session for an exercise, oldest first.
+    // Weighted sets are ranked by e1RM; if an exercise has only bodyweight sets, by reps.
     static func history(for name: String, in workouts: [Workout]) -> [ExerciseDataPoint] {
         let key = name.exerciseKey
         return workouts
             .sorted { $0.date < $1.date }
             .compactMap { workout -> ExerciseDataPoint? in
-                guard let exercise = workout.exercises
-                    .first(where: { $0.name.exerciseKey == key })
-                else { return nil }
-                guard let best = exercise.sets
-                    .filter({ $0.weight > 0 && $0.reps > 0 })
-                    .max(by: {
-                        PRService.e1RM(weight: $0.weight, reps: $0.reps) <
-                        PRService.e1RM(weight: $1.weight, reps: $1.reps)
-                    })
-                else { return nil }
+                guard let exercise = workout.exercises.first(where: { $0.name.exerciseKey == key }) else { return nil }
+                let valid = exercise.sets.filter { $0.isCompleted && $0.reps > 0 }
+                let weighted = valid.filter { $0.weight > 0 }
+                let best = weighted.isEmpty
+                    ? valid.max { $0.reps < $1.reps }
+                    : weighted.max { PRService.e1RM(weight: $0.weight, reps: $0.reps) < PRService.e1RM(weight: $1.weight, reps: $1.reps) }
+                guard let best else { return nil }
                 return ExerciseDataPoint(
                     date: workout.date,
                     e1RM: PRService.e1RM(weight: best.weight, reps: best.reps),
@@ -69,7 +67,8 @@ enum ProgressionService {
     // Returns advice when e1RM has stagnated over the last sessions
     static func overloadAdvice(for name: String, in workouts: [Workout]) -> String? {
         let recent = Array(history(for: name, in: workouts).suffix(3))
-        guard recent.count >= 2 else { return nil }
+        // Weight advice only makes sense for weighted exercises
+        guard recent.count >= 2, recent.allSatisfy({ $0.weight > 0 }) else { return nil }
 
         let firstE1RM = recent.first!.e1RM
         let lastE1RM  = recent.last!.e1RM
