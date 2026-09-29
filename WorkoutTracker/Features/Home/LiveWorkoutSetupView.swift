@@ -2,6 +2,7 @@ import SwiftUI
 
 struct LiveWorkoutSetupView: View {
     @ObservedObject private var store: WorkoutStore
+    private let onStart: (LiveStart) -> Void
 
     @AppStorage("lastLiveWorkoutType") private var lastType: String = ""
     @AppStorage("lastLiveWorkoutCategory") private var lastCategoryRaw: String = WorkoutCategory.strength.rawValue
@@ -13,8 +14,9 @@ struct LiveWorkoutSetupView: View {
 
     private let categoryColumns = Array(repeating: GridItem(.flexible(), spacing: 12), count: 4)
 
-    init(store: WorkoutStore) {
+    init(store: WorkoutStore, onStart: @escaping (LiveStart) -> Void) {
         self._store = ObservedObject(wrappedValue: store)
+        self.onStart = onStart
         _type = State(initialValue: lastType)
         _category = State(initialValue: WorkoutCategory(rawValue: lastCategoryRaw) ?? .strength)
     }
@@ -287,13 +289,12 @@ struct LiveWorkoutSetupView: View {
     // MARK: - Start button
 
     private var startButton: some View {
-        NavigationLink {
-            LiveWorkoutView(
-                store: store,
-                initialType: type.trimmingCharacters(in: .whitespacesAndNewlines),
-                initialCategory: category,
-                initialExercises: plannedExercises
-            )
+        Button {
+            onStart(LiveStart(
+                type: type.trimmingCharacters(in: .whitespacesAndNewlines),
+                category: category,
+                exercises: plannedExercises
+            ))
         } label: {
             HStack(spacing: 10) {
                 Image(systemName: "play.circle.fill")

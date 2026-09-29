@@ -59,12 +59,23 @@ struct LiveWorkoutView: View {
         .scrollDismissesKeyboard(.interactively)
         .toolbar(.hidden, for: .tabBar)
         .toolbarTitleDisplayMode(.inline)
+        // Leaving happens only through Minimer (keeps running), Avbryt or Fullfør
+        .navigationBarBackButtonHidden(true)
         .toolbar {
             ToolbarItem(placement: .principal) {
                 principalToolbar
             }
-            ToolbarItem(placement: .cancellationAction) {
-                Button("Avbryt") { showExitConfirm = true }
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    vm.saveSnapshot()
+                    dismiss()
+                } label: {
+                    Image(systemName: "chevron.down")
+                }
+                .accessibilityLabel("Minimer økten")
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Avbryt", role: .destructive) { showExitConfirm = true }
             }
             ToolbarItem(placement: .keyboard) {
                 Button("Ferdig") {
@@ -125,11 +136,11 @@ struct LiveWorkoutView: View {
             s.isActive = true
             s.type = vm.draft.type.trimmingCharacters(in: .whitespacesAndNewlines)
             s.category = vm.draft.category
-            s.elapsed = vm.elapsed
+            s.updateTimer(elapsed: vm.elapsed, isRunning: vm.isRunning)
             s.isLiveViewVisible = true
         }
-        .onChange(of: vm.elapsed) { newValue in
-            LiveSessionCoordinator.shared.elapsed = newValue
+        .onChange(of: vm.isRunning) { isRunning in
+            LiveSessionCoordinator.shared.updateTimer(elapsed: vm.elapsed, isRunning: isRunning)
         }
         .onChange(of: vm.draft.type) { newValue in
             LiveSessionCoordinator.shared.type = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -141,8 +152,12 @@ struct LiveWorkoutView: View {
             if phase == .background { vm.saveSnapshot() }
         }
         .onDisappear {
-            if LiveSessionCoordinator.shared.isActive {
-                LiveSessionCoordinator.shared.isLiveViewVisible = false
+            let s = LiveSessionCoordinator.shared
+            if s.isActive {
+                // Minimized: keep the latest edits and let the banner take over the clock
+                vm.saveSnapshot()
+                s.updateTimer(elapsed: vm.elapsed, isRunning: vm.isRunning)
+                s.isLiveViewVisible = false
             }
         }
     }

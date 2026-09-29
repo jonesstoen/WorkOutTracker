@@ -14,7 +14,7 @@ struct LiveWorkoutBanner: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Pågående økt")
                             .font(.caption).bold()
-                        Text("\(session.type.isEmpty ? session.category.rawValue : session.type) · \(format(session.elapsed))")
+                        (Text("\(session.type.isEmpty ? session.category.rawValue : session.type) · ") + timerText)
                             .font(.caption2)
                             .foregroundColor(.secondary)
                             .lineLimit(1)
@@ -35,6 +35,13 @@ struct LiveWorkoutBanner: View {
             .padding(.top, 8)
             .transition(.move(edge: .top).combined(with: .opacity))
         }
+    }
+
+    private var timerText: Text {
+        if let pausedAt = session.pausedAt {
+            return Text(format(pausedAt.timeIntervalSince(session.timerStart))) + Text(" (pause)")
+        }
+        return Text(session.timerStart, style: .timer)
     }
 
     private func format(_ t: TimeInterval) -> String {

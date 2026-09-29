@@ -38,6 +38,13 @@ struct LiveWorkout: Equatable, Codable {
     }
 }
 
+/// What the setup screen hands over when a new live workout starts
+struct LiveStart: Hashable {
+    var type: String
+    var category: WorkoutCategory
+    var exercises: [Exercise]
+}
+
 /// Snapshot persisted to UserDefaults so a live session survives app kills.
 struct LiveSessionSnapshot: Codable {
     let draft: LiveWorkout
