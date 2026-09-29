@@ -36,7 +36,7 @@ final class WorkoutStore: ObservableObject, WorkoutRepository {
     init(persistence: PersistenceService) {
         self.persistence = persistence
         // Last inn fra service
-        self.workouts = persistence.loadWorkouts()
+        self.workouts = persistence.loadWorkouts().map { $0.repairingLegacyHealthNotes() }
 
         // Save right away on every change: changes are rare, and a debounce
         // could lose a just-finished workout if the app is killed

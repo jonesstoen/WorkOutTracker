@@ -32,7 +32,6 @@ struct HealthDataImporter {
     static func asyncMap(_ hk: HKWorkout) async throws -> Workout {
         try await withCheckedThrowingContinuation { cont in
             fetchCalories(for: hk) { calories in
-                let durationMin = Int(hk.duration / 60)
                 // Velg kategori basert på aktivitetstype
                 let category: WorkoutCategory
                 switch hk.workoutActivityType {
@@ -58,7 +57,8 @@ struct HealthDataImporter {
                     type: hk.workoutActivityType.displayName,
                     category: category,
                     exercises: [],
-                    notes: "Kalorier: \(Int(calories)), Varighet: \(durationMin) min"
+                    notes: calories > 0 ? "Kalorier: \(Int(calories)) kcal" : "",
+                    duration: hk.duration
                 )
                 cont.resume(returning: workout)
             }
@@ -80,5 +80,21 @@ extension HKWorkoutActivityType {
         case .mindAndBody:                return "Mind & Body"
         default:                          return "Annet"
         }
+    }
+}
+
+extension Workout {
+    /// Older HealthKit imports stored duration only as text in the notes ("Kalorier: 312, Varighet: 45 min").
+    /// Moves it into `duration` so it counts in stats; other workouts are returned unchanged.
+    func repairingLegacyHealthNotes() -> Workout {
+        guard duration == 0,
+              let match = notes.wholeMatch(of: #/Kalorier: (\d+), Varighet: (\d+) min/#),
+              let minutes = Double(match.2)
+        else { return self }
+
+        var repaired = self
+        repaired.duration = minutes * 60
+        repaired.notes = match.1 == "0" ? "" : "Kalorier: \(match.1) kcal"
+        return repaired
     }
 }

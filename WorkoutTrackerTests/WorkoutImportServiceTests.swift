@@ -30,8 +30,8 @@ final class WorkoutRepositoryFake: WorkoutRepository {
 struct HealthKitWorkoutFetcherFake: HealthKitWorkoutFetching {
     var workouts: [HKWorkout]
 
-    func fetchWorkouts(limit: Int) async throws -> [HKWorkout] {
-        Array(workouts.prefix(limit))
+    func fetchNewWorkouts(since anchor: HKQueryAnchor?) async throws -> (workouts: [HKWorkout], anchor: HKQueryAnchor?) {
+        (workouts, nil)
     }
 }
 
@@ -39,8 +39,7 @@ struct WorkoutImportServiceTests {
 
     @Test
     func importIfNeeded_addsOnlyNewWorkouts_andIsIdempotent() async throws {
-        // Sørg for at vi starter uten tidligere import‑timestamp.
-        UserDefaults.standard.removeObject(forKey: "lastHealthKitImport")
+        let defaults = UserDefaults(suiteName: "WorkoutImportServiceTests-\(UUID().uuidString)")!
 
         // Lag to dummy HKWorkout‑objekter.
         let now = Date()
@@ -58,7 +57,9 @@ struct WorkoutImportServiceTests {
 
         let importService = WorkoutImportService(
             repository: repo,
-            workoutFetcher: fetcher
+            workoutFetcher: fetcher,
+            defaults: defaults,
+            isAuthorized: { true }
         )
 
         // Første import skal legge til begge mapped workouts i repoet.
@@ -68,6 +69,10 @@ struct WorkoutImportServiceTests {
         // Andre kall i samme sesjon skal være no‑op (didImportInitial hindrer ny import).
         await importService.importIfNeeded()
         #expect(repo.workouts.count == 2)
+
+        // En ny sesjon som får de samme øktene igjen, skal ikke lage duplikater.
+        await WorkoutImportService(repository: repo, workoutFetcher: fetcher, defaults: defaults, isAuthorized: { true })
+            .importIfNeeded()
+        #expect(repo.workouts.count == 2)
     }
 }
-
