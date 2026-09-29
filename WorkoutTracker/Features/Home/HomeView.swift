@@ -277,7 +277,7 @@ struct HomeView: View {
                 AddWorkoutView(store: store)
             }
             .sheet(isPresented: $showSettings) {
-                UserSettingsView()
+                UserSettingsView(store: store)
             }
             .navigationDestination(for: HomeNavigationCoordinator.Route.self) { route in
                 switch route {

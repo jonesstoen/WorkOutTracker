@@ -24,6 +24,10 @@ final class WorkoutRepositoryFake: WorkoutRepository {
     func delete(_ workout: Workout) {
         workoutsStorage.removeAll { $0.id == workout.id }
     }
+
+    func replaceAll(with workouts: [Workout]) {
+        workoutsStorage = workouts
+    }
 }
 
 /// Fake fetcher som returnerer forhåndsdefinerte HKWorkout‑instanser.

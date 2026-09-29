@@ -21,6 +21,9 @@ protocol WorkoutRepository: AnyObject {
 
     /// Slett en spesifikk økt.
     func delete(_ workout: Workout)
+
+    /// Erstatt alle økter, f.eks. ved gjenoppretting fra sikkerhetskopi.
+    func replaceAll(with workouts: [Workout])
 }
 
 final class WorkoutStore: ObservableObject, WorkoutRepository {
@@ -61,5 +64,9 @@ final class WorkoutStore: ObservableObject, WorkoutRepository {
 
     func delete(_ workout: Workout) {
         workouts.removeAll { $0.id == workout.id }
+    }
+
+    func replaceAll(with workouts: [Workout]) {
+        self.workouts = workouts
     }
 }
