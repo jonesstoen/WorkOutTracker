@@ -30,7 +30,7 @@ struct WorkoutWidgetExtensionLiveActivity: Widget {
                 }
                 DynamicIslandExpandedRegion(.trailing) {
                     VStack(alignment: .trailing, spacing: 2) {
-                        Text(timerDate(context: context), style: .timer)
+                        WorkoutTimerText(state: context.state)
                             .font(.title3.monospacedDigit())
                             .foregroundStyle(.white)
                             .multilineTextAlignment(.trailing)
@@ -44,7 +44,7 @@ struct WorkoutWidgetExtensionLiveActivity: Widget {
                 Image(systemName: context.attributes.categoryIcon)
                     .foregroundStyle(.white)
             } compactTrailing: {
-                Text(timerDate(context: context), style: .timer)
+                WorkoutTimerText(state: context.state)
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(.white)
                     .frame(width: 40)
@@ -54,10 +54,6 @@ struct WorkoutWidgetExtensionLiveActivity: Widget {
             }
             .keylineTint(.white.opacity(0.3))
         }
-    }
-
-    private func timerDate(context: ActivityViewContext<WorkoutActivityAttributes>) -> Date {
-        Date(timeIntervalSinceNow: -(context.state.elapsed))
     }
 }
 
@@ -101,7 +97,7 @@ private struct LockScreenLiveActivityView: View {
             Spacer()
 
             VStack(alignment: .trailing, spacing: 2) {
-                Text(timerDate, style: .timer)
+                WorkoutTimerText(state: context.state)
                     .font(.title2.monospacedDigit().bold())
                     .foregroundStyle(.white)
                     .multilineTextAlignment(.trailing)
@@ -113,8 +109,19 @@ private struct LockScreenLiveActivityView: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
     }
+}
 
-    private var timerDate: Date {
-        Date(timeIntervalSinceNow: -(context.state.elapsed))
+// MARK: - Timer
+
+/// Counts up from the workout start while running, and stands still at the paused time while paused.
+private struct WorkoutTimerText: View {
+    let state: WorkoutActivityAttributes.ContentState
+
+    var body: some View {
+        if let pausedAt = state.pausedAt {
+            Text(timerInterval: state.timerStart...pausedAt, pauseTime: pausedAt, countsDown: false)
+        } else {
+            Text(state.timerStart, style: .timer)
+        }
     }
 }

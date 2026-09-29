@@ -21,6 +21,9 @@ protocol WorkoutRepository: AnyObject {
 
     /// Slett en spesifikk økt.
     func delete(_ workout: Workout)
+
+    /// Erstatt alle økter, f.eks. ved gjenoppretting fra sikkerhetskopi.
+    func replaceAll(with workouts: [Workout])
 }
 
 final class WorkoutStore: ObservableObject, WorkoutRepository {
@@ -36,14 +39,13 @@ final class WorkoutStore: ObservableObject, WorkoutRepository {
     init(persistence: PersistenceService) {
         self.persistence = persistence
         // Last inn fra service
-        self.workouts = persistence.loadWorkouts()
+        self.workouts = persistence.loadWorkouts().map { $0.repairingLegacyHealthNotes() }
 
-        // Debounce saving to avoid excessive disk writes
+        // Save right away on every change: changes are rare, and a debounce
+        // could lose a just-finished workout if the app is killed
         $workouts
             .dropFirst() // Avoid saving immediately after initial load
-            .debounce(for: .milliseconds(500), scheduler: RunLoop.main)
             .sink { [weak self] workouts in
-                print("save workout", workouts.count)
                 self?.persistence.saveWorkouts(workouts)
             }
             .store(in: &cancellables)
@@ -62,5 +64,9 @@ final class WorkoutStore: ObservableObject, WorkoutRepository {
 
     func delete(_ workout: Workout) {
         workouts.removeAll { $0.id == workout.id }
+    }
+
+    func replaceAll(with workouts: [Workout]) {
+        self.workouts = workouts
     }
 }

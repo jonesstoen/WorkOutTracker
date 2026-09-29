@@ -1,59 +1,19 @@
 import SwiftUI
 
-private struct ExerciseEntry {
-    let name: String
-    let muscle: String
-}
-
 struct NewExerciseSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Binding var exercises: [Exercise]
+    /// Sets from the last time an exercise was done; used to pre-fill a newly added exercise
+    var previousSets: (String) -> [WorkingSet]? = { _ in nil }
 
     @StateObject private var vm = ExercisesViewModel()
     @State private var searchText = ""
-    @State private var selectedMuscle: String? = nil
+    @State private var selectedMuscle: MuscleGroup? = nil
     @State private var showEditSheet = false
+    @State private var pendingCustomName: String? = nil
 
-    private let muscles = ["Bryst", "Rygg", "Ben", "Skuldre", "Armer", "Kjerne"]
-
-    private let predefined: [ExerciseEntry] = [
-        // Bryst
-        ExerciseEntry(name: "Benkpress",              muscle: "Bryst"),
-        ExerciseEntry(name: "Benkpress manualer",     muscle: "Bryst"),
-        ExerciseEntry(name: "Incline benkpress",      muscle: "Bryst"),
-        ExerciseEntry(name: "Flyes",                  muscle: "Bryst"),
-        ExerciseEntry(name: "Dips",                   muscle: "Bryst"),
-        // Rygg
-        ExerciseEntry(name: "Nedtrekk",               muscle: "Rygg"),
-        ExerciseEntry(name: "Pull-ups",               muscle: "Rygg"),
-        ExerciseEntry(name: "Roing",                  muscle: "Rygg"),
-        ExerciseEntry(name: "Sittende roing",         muscle: "Rygg"),
-        ExerciseEntry(name: "Kabelroing",             muscle: "Rygg"),
-        ExerciseEntry(name: "Markløft",               muscle: "Rygg"),
-        // Ben
-        ExerciseEntry(name: "Squat",                  muscle: "Ben"),
-        ExerciseEntry(name: "Leg press",              muscle: "Ben"),
-        ExerciseEntry(name: "Utfall",                 muscle: "Ben"),
-        ExerciseEntry(name: "Strak markløft",         muscle: "Ben"),
-        ExerciseEntry(name: "Hip thrust",             muscle: "Ben"),
-        ExerciseEntry(name: "Leg curl",               muscle: "Ben"),
-        ExerciseEntry(name: "Leg extension",          muscle: "Ben"),
-        // Skuldre
-        ExerciseEntry(name: "Skulderpress",           muscle: "Skuldre"),
-        ExerciseEntry(name: "Stående press",          muscle: "Skuldre"),
-        ExerciseEntry(name: "Lateral raises",         muscle: "Skuldre"),
-        ExerciseEntry(name: "Facepull",               muscle: "Skuldre"),
-        // Armer
-        ExerciseEntry(name: "Bicep curl",             muscle: "Armer"),
-        ExerciseEntry(name: "Hammer curl",            muscle: "Armer"),
-        ExerciseEntry(name: "Triceps pushdown",       muscle: "Armer"),
-        ExerciseEntry(name: "Skull crushers",         muscle: "Armer"),
-        // Kjerne
-        ExerciseEntry(name: "Planke",                 muscle: "Kjerne"),
-        ExerciseEntry(name: "Cable crunch",           muscle: "Kjerne"),
-        ExerciseEntry(name: "Russian twist",          muscle: "Kjerne"),
-        ExerciseEntry(name: "Hanging leg raise",      muscle: "Kjerne"),
-    ]
+    private let muscles = MuscleGroup.selectable
+    private let predefined = ExerciseCatalog.predefined
 
     private var allNames: [String] {
         var seen = Set<String>()
@@ -69,7 +29,7 @@ struct NewExerciseSheet: View {
         }
     }
 
-    private var filteredPredefined: [ExerciseEntry] {
+    private var filteredPredefined: [CatalogExercise] {
         predefined.filter { entry in
             let matchesSearch = searchText.isEmpty || entry.name.localizedCaseInsensitiveContains(searchText)
             let matchesMuscle = selectedMuscle == nil || entry.muscle == selectedMuscle
@@ -77,10 +37,13 @@ struct NewExerciseSheet: View {
         }
     }
 
+    private var customMuscles: [String: MuscleGroup] { ExerciseCatalog.customMuscles() }
+
     private var filteredCustom: [String] {
-        guard selectedMuscle == nil else { return [] }
-        return vm.exercises.filter {
-            searchText.isEmpty || $0.localizedCaseInsensitiveContains(searchText)
+        vm.exercises.filter { name in
+            let matchesSearch = searchText.isEmpty || name.localizedCaseInsensitiveContains(searchText)
+            let matchesMuscle = selectedMuscle == nil || customMuscles[name.exerciseKey] == selectedMuscle
+            return matchesSearch && matchesMuscle
         }
     }
 
@@ -97,17 +60,17 @@ struct NewExerciseSheet: View {
                     Section("Mine øvelser") {
                         ForEach(filteredCustom, id: \.self) { name in
                             Button { add(name: name) } label: {
-                                exerciseRow(name: name, muscle: nil)
+                                exerciseRow(name: name, muscle: customMuscles[name.exerciseKey]?.rawValue)
                             }
                         }
                     }
                 }
 
                 if !filteredPredefined.isEmpty {
-                    Section(selectedMuscle ?? "Alle øvelser") {
+                    Section(selectedMuscle?.rawValue ?? "Alle øvelser") {
                         ForEach(filteredPredefined, id: \.name) { entry in
                             Button { add(name: entry.name) } label: {
-                                exerciseRow(name: entry.name, muscle: entry.muscle)
+                                exerciseRow(name: entry.name, muscle: entry.muscle.rawValue)
                             }
                         }
                     }
@@ -142,6 +105,21 @@ struct NewExerciseSheet: View {
             .sheet(isPresented: $showEditSheet) {
                 EditCustomExercisesView(vm: vm)
             }
+            .confirmationDialog(
+                "Hvilken muskelgruppe trener \(pendingCustomName ?? "øvelsen")?",
+                isPresented: Binding(
+                    get: { pendingCustomName != nil },
+                    set: { if !$0 { pendingCustomName = nil } }
+                ),
+                titleVisibility: .visible
+            ) {
+                ForEach(muscles) { muscle in
+                    Button(muscle.rawValue) { addCustom(muscle: muscle) }
+                }
+                Button("Hopp over") { addCustom(muscle: nil) }
+            } message: {
+                Text("Brukes til å vise volum per muskelgruppe.")
+            }
         }
     }
 
@@ -152,8 +130,8 @@ struct NewExerciseSheet: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
                     filterChip(label: "Alle", value: nil)
-                    ForEach(muscles, id: \.self) { muscle in
-                        filterChip(label: muscle, value: muscle)
+                    ForEach(muscles) { muscle in
+                        filterChip(label: muscle.rawValue, value: muscle)
                     }
                 }
                 .padding(.vertical, 2)
@@ -167,7 +145,7 @@ struct NewExerciseSheet: View {
     private var addCustomSection: some View {
         let q = searchText.trimmingCharacters(in: .whitespaces)
         return Section {
-            Button { add(name: q) } label: {
+            Button { pendingCustomName = q } label: {
                 HStack(spacing: 12) {
                     ZStack {
                         Circle()
@@ -216,7 +194,7 @@ struct NewExerciseSheet: View {
 
     // MARK: - Filter chip
 
-    private func filterChip(label: String, value: String?) -> some View {
+    private func filterChip(label: String, value: MuscleGroup?) -> some View {
         let isSelected = selectedMuscle == value
         return Button {
             withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
@@ -240,14 +218,19 @@ struct NewExerciseSheet: View {
 
     // MARK: - Add
 
+    private func addCustom(muscle: MuscleGroup?) {
+        guard let name = pendingCustomName else { return }
+        if let muscle { ExerciseCatalog.setCustomMuscle(muscle, for: name) }
+        pendingCustomName = nil
+        add(name: name)
+    }
+
     private func add(name: String) {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-        let isBuiltIn = predefined.contains {
-            $0.name.localizedCaseInsensitiveCompare(trimmed) == .orderedSame
-        }
-        if !isBuiltIn { vm.add(trimmed) }
-        exercises.append(Exercise(name: trimmed, sets: [WorkingSet(reps: 10, weight: 0)]))
+        if !ExerciseCatalog.isBuiltIn(trimmed) { vm.add(trimmed) }
+        let sets = previousSets(trimmed) ?? [WorkingSet(reps: 10, weight: 0, isCompleted: false)]
+        exercises.append(Exercise(name: trimmed, sets: sets))
         dismiss()
     }
 }

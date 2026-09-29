@@ -11,14 +11,12 @@ import Combine
 @MainActor
 class HomeViewModel: ObservableObject {
     @Published private(set) var workouts: [Workout] = []
-    private var cancellables = Set<AnyCancellable>()
 
     init(store: WorkoutStore) {
         self.workouts = store.workouts
         store.$workouts
             .receive(on: DispatchQueue.main)
-            .assign(to: \.workouts, on: self)
-            .store(in: &cancellables)
+            .assign(to: &$workouts)
     }
 
     // MARK: – Computed properties
@@ -68,16 +66,20 @@ class HomeViewModel: ObservableObject {
         .reversed()
     }
 
-    /// Datoetiketter for de siste `days` dagene (f.eks. "1 Jul", "2 Jul", ...)
-    func labels(forLast days: Int) -> [String] {
-        let cal = Calendar.current
+    private static let dayLabelFormatter: DateFormatter = {
         let fmt = DateFormatter()
         fmt.locale = Locale(identifier: "nb_NO")
         fmt.dateFormat = "d MMM"
+        return fmt
+    }()
+
+    /// Datoetiketter for de siste `days` dagene (f.eks. "1 Jul", "2 Jul", ...)
+    func labels(forLast days: Int) -> [String] {
+        let cal = Calendar.current
         let today = cal.startOfDay(for: Date())
         return (0..<days).map { offset in
             let day = cal.date(byAdding: .day, value: -offset, to: today)!
-            return fmt.string(from: day)
+            return Self.dayLabelFormatter.string(from: day)
         }
         .reversed()
     }
@@ -130,6 +132,14 @@ class HomeViewModel: ObservableObject {
         return prev > 0
             ? (Double(curr - prev) / Double(prev)) * 100
             : nil
+    }
+
+    /// Fullførte sett per muskelgruppe denne uken mot snittet de fire foregående ukene
+    var muscleVolumes: [MuscleVolume] {
+        let custom = ExerciseCatalog.customMuscles()
+        return MuscleVolumeService.weekly(workouts: workouts) {
+            ExerciseCatalog.muscle(for: $0, custom: custom)
+        }
     }
 
     /// De seneste 5 øktene, sortert synkende på dato

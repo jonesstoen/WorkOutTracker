@@ -65,8 +65,6 @@ final class ExercisesViewModel: ObservableObject {
 
     private func save(_ exercises: [String]) {
         userDefaults.set(exercises, forKey: Keys.customExercises)
-        // For debug ved behov:
-        print("💾 Saved exercises:", exercises.count)
     }
 
     private func normalize(_ s: String) -> String {

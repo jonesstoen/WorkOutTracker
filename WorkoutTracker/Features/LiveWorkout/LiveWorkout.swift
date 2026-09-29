@@ -14,6 +14,35 @@ struct LiveWorkout: Equatable, Codable {
     var category: WorkoutCategory = .strength
     var exercises: [Exercise] = []
     var notes: String = ""
+
+    /// Antall sett som ikke er haket av.
+    var incompleteSetCount: Int {
+        exercises.reduce(0) { $0 + $1.sets.filter { !$0.isCompleted }.count }
+    }
+
+    /// Øvelsene slik de lagres: bare fullførte sett, og uten øvelser som står tomme.
+    var completedExercises: [Exercise] {
+        exercises.compactMap { exercise in
+            var copy = exercise
+            copy.sets = exercise.sets.filter(\.isCompleted)
+            return copy.sets.isEmpty ? nil : copy
+        }
+    }
+
+    mutating func markAllCompleted() {
+        for e in exercises.indices {
+            for s in exercises[e].sets.indices {
+                exercises[e].sets[s].isCompleted = true
+            }
+        }
+    }
+}
+
+/// What the setup screen hands over when a new live workout starts
+struct LiveStart: Hashable {
+    var type: String
+    var category: WorkoutCategory
+    var exercises: [Exercise]
 }
 
 /// Snapshot persisted to UserDefaults so a live session survives app kills.

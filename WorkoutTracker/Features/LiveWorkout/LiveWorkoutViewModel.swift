@@ -1,5 +1,7 @@
 import Foundation
 import Combine
+import UIKit
+import UserNotifications
 
 @MainActor
 final class LiveWorkoutViewModel: ObservableObject {
@@ -8,14 +10,23 @@ final class LiveWorkoutViewModel: ObservableObject {
     @Published var isRunning: Bool = true
     @Published var showExerciseSheet = false
 
+    // Rest timer
+    @Published private(set) var restSecondsRemaining: Int = 0
+    @Published private(set) var restTimerActive: Bool = false
+    var restDuration: Int = 90
+
     private var timerCancellable: AnyCancellable?
     private var saveCancellable: AnyCancellable?
+    private var restCancellable: AnyCancellable?
+    private var restEndsAt: Date?
     private let repository: WorkoutRepository
     private var pauseBeganAt: Date?
     private var totalPaused: TimeInterval = 0
-    private var historicalPRs: [String: Double] = [:]
+    private var historicalPRs: [String: ExercisePR] = [:]
+    private var snapshotWorkouts: [Workout] = []
 
     private static let snapshotKey = "liveSessionSnapshot"
+    private static let restNotificationID = "restTimerFinished"
 
     // MARK: - Init
 
@@ -27,16 +38,16 @@ final class LiveWorkoutViewModel: ObservableObject {
         restoreIfAvailable: Bool = false
     ) {
         self.repository = store
+        self.snapshotWorkouts = store.workouts
 
-        let prMap = PRService.computePRs(from: store.workouts)
-        historicalPRs = prMap.mapValues { $0.e1RM }
+        historicalPRs = PRService.computePRs(from: store.workouts)
 
         if restoreIfAvailable, let snapshot = Self.loadSnapshot() {
             draft = snapshot.draft
-            totalPaused = snapshot.wasRunning
-                ? snapshot.totalPaused
-                : snapshot.totalPaused + Date().timeIntervalSince(snapshot.savedAt)
+            totalPaused = snapshot.totalPaused
             isRunning = snapshot.wasRunning
+            // A paused session stays paused: the pause continues from when the snapshot was saved
+            pauseBeganAt = snapshot.wasRunning ? nil : snapshot.savedAt
         } else {
             Self.clearSnapshot()
             draft.type = initialType
@@ -49,6 +60,7 @@ final class LiveWorkoutViewModel: ObservableObject {
         startAutosave()
 
         if restoreIfAvailable, Self.hasSnapshot() {
+            LiveActivityManager.shared.reattach()
             LiveActivityManager.shared.update(
                 isRunning: isRunning,
                 exerciseCount: draft.exercises.count,
@@ -109,26 +121,98 @@ final class LiveWorkoutViewModel: ObservableObject {
             date: draft.startDate,
             type: draft.type.trimmingCharacters(in: .whitespacesAndNewlines),
             category: draft.category,
-            exercises: draft.exercises,
+            exercises: draft.completedExercises,
             notes: draft.notes.trimmingCharacters(in: .whitespacesAndNewlines),
             duration: elapsed
         )
         repository.add(workout)
+        skipRest()
         LiveActivityManager.shared.end(elapsed: elapsed, exerciseCount: draft.exercises.count)
         Self.clearSnapshot()
     }
 
+    func markAllCompleted() {
+        draft.markAllCompleted()
+    }
+
     func abort() {
+        skipRest()
         LiveActivityManager.shared.end(elapsed: elapsed, exerciseCount: draft.exercises.count)
         Self.clearSnapshot()
+    }
+
+    // MARK: - Rest timer
+
+    func startRestTimer() {
+        let endsAt = Date().addingTimeInterval(TimeInterval(restDuration))
+        restEndsAt = endsAt
+        restSecondsRemaining = restDuration
+        restTimerActive = true
+        scheduleRestNotification(at: endsAt)
+
+        // Remaining time is derived from the end date, so the timer stays correct after backgrounding
+        restCancellable?.cancel()
+        restCancellable = Timer.publish(every: 1, on: .main, in: .common)
+            .autoconnect()
+            .sink { [weak self] _ in self?.tickRest() }
+    }
+
+    func skipRest() {
+        restTimerActive = false
+        restSecondsRemaining = 0
+        restEndsAt = nil
+        restCancellable?.cancel()
+        UNUserNotificationCenter.current()
+            .removePendingNotificationRequests(withIdentifiers: [Self.restNotificationID])
+    }
+
+    private func tickRest() {
+        guard let restEndsAt else { return }
+        restSecondsRemaining = max(0, Int(restEndsAt.timeIntervalSinceNow.rounded(.up)))
+        if restSecondsRemaining == 0 {
+            restTimerActive = false
+            self.restEndsAt = nil
+            restCancellable?.cancel()
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
+        }
+    }
+
+    private func scheduleRestNotification(at date: Date) {
+        let center = UNUserNotificationCenter.current()
+        center.removePendingNotificationRequests(withIdentifiers: [Self.restNotificationID])
+        let seconds = date.timeIntervalSinceNow
+        guard seconds > 0 else { return }
+
+        let content = UNMutableNotificationContent()
+        content.title = "Hvilen er over"
+        content.body = "Klar for neste sett?"
+        content.sound = .default
+        let request = UNNotificationRequest(
+            identifier: Self.restNotificationID,
+            content: content,
+            trigger: UNTimeIntervalNotificationTrigger(timeInterval: seconds, repeats: false)
+        )
+        center.requestAuthorization(options: [.alert, .sound]) { granted, _ in
+            guard granted else { return }
+            center.add(request)
+        }
+    }
+
+    // MARK: - Exercise history
+
+    func lastSession(for exerciseName: String) -> ExerciseDataPoint? {
+        ProgressionService.lastSession(for: exerciseName, in: snapshotWorkouts)
+    }
+
+    func plannedSets(for exerciseName: String) -> [WorkingSet]? {
+        ProgressionService.plannedSets(for: exerciseName, in: snapshotWorkouts)
     }
 
     // MARK: - PR check
 
     func isPR(exerciseName: String, weight: Double, reps: Int) -> Bool {
-        guard weight > 0, reps > 0 else { return false }
-        guard let best = historicalPRs[exerciseName.lowercased()] else { return false }
-        return PRService.e1RM(weight: weight, reps: reps) > best
+        guard let best = historicalPRs[exerciseName.exerciseKey] else { return false }
+        return PRService.isRecord(weight: weight, reps: reps, comparedTo: best)
     }
 
     // MARK: - Persistence

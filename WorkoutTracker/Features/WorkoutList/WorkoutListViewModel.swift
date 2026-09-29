@@ -5,8 +5,6 @@ import Combine
 class WorkoutListViewModel: ObservableObject {
     @Published private(set) var workouts: [Workout] = []
     @Published var selectedCategory: WorkoutCategory? = nil
-
-    private var cancellables = Set<AnyCancellable>()
     private let repository: WorkoutRepository
 
     init(store: WorkoutStore) {
@@ -14,8 +12,7 @@ class WorkoutListViewModel: ObservableObject {
         self.workouts = store.workouts
         store.$workouts
             .receive(on: DispatchQueue.main)
-            .assign(to: \.workouts, on: self)
-            .store(in: &cancellables)
+            .assign(to: &$workouts)
     }
 
     private struct YearWeek: Hashable {

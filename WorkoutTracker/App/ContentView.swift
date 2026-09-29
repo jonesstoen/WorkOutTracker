@@ -27,21 +27,21 @@ struct ContentView: View {
                     .tabItem { Label("Oversikt", systemImage: "house") }
                     .tag(0)
 
-                NavigationView {
+                NavigationStack {
                     WorkoutListView(store: store)
                         .navigationTitle("Historikk")
                 }
                 .tabItem { Label("Historikk", systemImage: "clock.arrow.circlepath") }
                 .tag(1)
 
-                NavigationView {
+                NavigationStack {
                     CalendarWorkoutView(store: store)
                         .navigationTitle("Kalender")
                 }
                 .tabItem { Label("Kalender", systemImage: "calendar") }
                 .tag(2)
 
-                NavigationView {
+                NavigationStack {
                     PRListView(store: store)
                 }
                 .tabItem { Label("Rekorder", systemImage: "trophy") }
@@ -64,9 +64,8 @@ struct ContentView: View {
                 liveSession.isActive = true
                 liveSession.type = snap.draft.type
                 liveSession.category = snap.draft.category
-                let backgrounded = snap.wasRunning ? 0.0 : Date().timeIntervalSince(snap.savedAt)
-                liveSession.elapsed = Date().timeIntervalSince(snap.draft.startDate)
-                    - snap.totalPaused - backgrounded
+                liveSession.timerStart = snap.draft.startDate.addingTimeInterval(snap.totalPaused)
+                liveSession.pausedAt = snap.wasRunning ? nil : snap.savedAt
             }
 
             liveSession.onResumeTapped = {

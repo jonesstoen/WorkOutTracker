@@ -5,7 +5,7 @@ struct EditExerciseSheet: View {
     @Binding var exercise: Exercise
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Form {
                 Section("Øvelse") {
                     TextField("Navn", text: $exercise.name)

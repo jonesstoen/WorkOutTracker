@@ -5,7 +5,7 @@ struct EditCustomExercisesView: View {
     @ObservedObject var vm: ExercisesViewModel
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             List {
                 ForEach(vm.exercises, id: \.self) { ex in
                     Text(ex)

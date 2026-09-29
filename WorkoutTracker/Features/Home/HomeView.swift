@@ -11,6 +11,7 @@ struct HomeView: View {
     @AppStorage("weeklyGoal") private var weeklyGoal: Int = 3
 
     @EnvironmentObject private var nav: HomeNavigationCoordinator
+    @ObservedObject private var liveSession = LiveSessionCoordinator.shared
     @State private var path = NavigationPath()
 
     init(store: WorkoutStore) {
@@ -43,12 +44,12 @@ struct HomeView: View {
                         VStack(alignment: .leading, spacing: 8) {
                             Text(userName.isEmpty ? vm.greeting : "\(vm.greeting), \(userName)!")
                                 .font(.largeTitle).bold()
-                                .foregroundColor(.white)
+                                .foregroundStyle(.primary)
 
                             HStack(spacing: 10) {
                                 Text(vm.dateString)
                                     .font(.subheadline)
-                                    .foregroundColor(.white.opacity(0.6))
+                                    .foregroundStyle(.secondary)
 
                                 if vm.currentStreak > 0 {
                                     HStack(spacing: 4) {
@@ -61,8 +62,8 @@ struct HomeView: View {
                                     }
                                     .padding(.horizontal, 10)
                                     .padding(.vertical, 4)
-                                    .background(.white.opacity(0.15))
-                                    .foregroundColor(.white)
+                                    .background(.ultraThinMaterial)
+                                    .foregroundStyle(.primary)
                                     .clipShape(Capsule())
                                 }
                             }
@@ -70,14 +71,18 @@ struct HomeView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal, 24)
 
-                        // Primary CTA — Start økt
-                        NavigationLink {
-                            LiveWorkoutSetupView(store: store)
+                        // Primary CTA — start a workout, or get back to the one in progress
+                        Button {
+                            if liveSession.isActive {
+                                path = NavigationPath([HomeNavigationCoordinator.Route.resume])
+                            } else {
+                                path.append(HomeNavigationCoordinator.Route.setup)
+                            }
                         } label: {
                             HStack(spacing: 12) {
-                                Image(systemName: "play.circle.fill")
+                                Image(systemName: liveSession.isActive ? "arrow.uturn.forward.circle.fill" : "play.circle.fill")
                                     .imageScale(.large)
-                                Text("Start økt")
+                                Text(liveSession.isActive ? "Fortsett økt" : "Start økt")
                                     .font(.headline)
                                 Spacer()
                                 Image(systemName: "chevron.right")
@@ -99,6 +104,7 @@ struct HomeView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                             .shadow(color: Color.black.opacity(0.12), radius: 10, x: 0, y: 6)
                         }
+                        .buttonStyle(.plain)
                         .padding(.horizontal, 16)
                         .padding(.top, 6)
 
@@ -109,14 +115,14 @@ struct HomeView: View {
                                 Text("Legg til manuelt")
                                     .font(.subheadline.weight(.medium))
                             }
-                            .foregroundStyle(.white.opacity(0.85))
+                            .foregroundStyle(.primary)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 12)
-                            .background(.white.opacity(0.1))
+                            .background(.ultraThinMaterial)
                             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                    .strokeBorder(.white.opacity(0.25), lineWidth: 1)
+                                    .strokeBorder(Color.primary.opacity(0.12), lineWidth: 1)
                             )
                         }
                         .buttonStyle(.plain)
@@ -171,8 +177,7 @@ struct HomeView: View {
                                         MiniChart(
                                             data: vm.counts(forLast: 7),
                                             labels: vm.labels(forLast: 7),
-                                            lineColor: trendColor,
-                                            pointColor: trendColor,
+                                            barColor: trendColor,
                                             backgroundGradient: bgGrad
                                         )
                                         .frame(height: 120)
@@ -181,8 +186,7 @@ struct HomeView: View {
                                         MiniChart(
                                             data: weekly.counts,
                                             labels: weekly.labels,
-                                            lineColor: trendColor,
-                                            pointColor: trendColor,
+                                            barColor: trendColor,
                                             backgroundGradient: bgGrad
                                         )
                                         .frame(height: 120)
@@ -215,6 +219,12 @@ struct HomeView: View {
                                     .font(.caption)
                                     .foregroundStyle(vm.workoutsThisWeek >= weeklyGoal ? .green : .secondary)
                             }
+                        }
+
+                        // Volume per muscle group
+                        let volumes = vm.muscleVolumes
+                        if !volumes.isEmpty {
+                            MuscleVolumeCard(volumes: volumes)
                         }
 
                         // Recent workouts
@@ -259,7 +269,7 @@ struct HomeView: View {
                     Button { showSettings = true } label: {
                         Image(systemName: "gearshape.fill")
                             .imageScale(.medium)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(.primary)
                     }
                 }
             }
@@ -267,11 +277,23 @@ struct HomeView: View {
                 AddWorkoutView(store: store)
             }
             .sheet(isPresented: $showSettings) {
-                UserSettingsView()
+                UserSettingsView(store: store)
             }
             .navigationDestination(for: HomeNavigationCoordinator.Route.self) { route in
                 switch route {
-                case .liveWorkout:
+                case .setup:
+                    LiveWorkoutSetupView(store: store) { start in
+                        // Replace setup with the live workout, so finishing returns to Home
+                        path = NavigationPath([HomeNavigationCoordinator.Route.live(start)])
+                    }
+                case .live(let start):
+                    LiveWorkoutView(
+                        store: store,
+                        initialType: start.type,
+                        initialCategory: start.category,
+                        initialExercises: start.exercises
+                    )
+                case .resume:
                     LiveWorkoutView(store: store, restoreIfAvailable: true)
                 }
             }
@@ -279,7 +301,7 @@ struct HomeView: View {
         .onChange(of: nav.resumeLiveRequested) { requested in
             if requested {
                 nav.resumeLiveRequested = false
-                path.append(HomeNavigationCoordinator.Route.liveWorkout)
+                path = NavigationPath([HomeNavigationCoordinator.Route.resume])
             }
         }
     }
