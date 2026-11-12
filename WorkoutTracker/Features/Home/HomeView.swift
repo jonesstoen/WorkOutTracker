@@ -269,6 +269,7 @@ struct HomeView: View {
                             .imageScale(.medium)
                             .foregroundStyle(.primary)
                     }
+                    .accessibilityLabel("Innstillinger")
                 }
             }
             .sheet(isPresented: $showManualAdd) {
