@@ -12,6 +12,7 @@ struct UserSettingsView: View {
     @State private var pendingImport: PendingImport?
     @State private var resultMessage: String?
     @State private var importError: String?
+    @State private var appIcon = AppIconModel(switcher: SystemAppIconSwitcher())
 
     private struct PendingImport {
         let backup: WorkoutBackup
@@ -37,6 +38,10 @@ struct UserSettingsView: View {
                     Text("Ukentlig mål")
                 } footer: {
                     Text("Brukes til å vise fremgang på oversikten.")
+                }
+
+                if appIcon.isSupported {
+                    appIconSection
                 }
 
                 dataSection
@@ -76,6 +81,52 @@ struct UserSettingsView: View {
             } message: {
                 Text(importError ?? "")
             }
+            .alert("Kunne ikke endre appikon", isPresented: Binding(get: { appIcon.error != nil }, set: { if !$0 { appIcon.dismissError() } })) {
+                Button("OK") { appIcon.dismissError() }
+            } message: {
+                Text(appIcon.error ?? "")
+            }
+        }
+    }
+
+    // MARK: - App icon
+
+    private var appIconSection: some View {
+        Section {
+            HStack(alignment: .top, spacing: 12) {
+                ForEach(AppIconChoice.allCases) { choice in
+                    let isSelected = appIcon.selection == choice
+                    Button {
+                        Task { await appIcon.select(choice) }
+                    } label: {
+                        VStack(spacing: 6) {
+                            AppIconTile(choice: choice)
+                                .overlay {
+                                    RoundedRectangle(cornerRadius: 17, style: .continuous)
+                                        .strokeBorder(Color.accentColor, lineWidth: 2.5)
+                                        .padding(-4)
+                                        .opacity(isSelected ? 1 : 0)
+                                }
+                            Text(choice.title)
+                                .font(.caption)
+                                .foregroundStyle(isSelected ? .primary : .secondary)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(choice.title)
+                    .accessibilityAddTraits(isSelected ? .isSelected : [])
+                }
+            }
+            .padding(.vertical, 8)
+            .disabled(appIcon.isChanging)
+        } header: {
+            Text("Appikon")
+        } footer: {
+            Text("Automatisk følger innstillingen på Hjem-skjermen for lyse, mørke og tonede ikoner.")
         }
     }
 

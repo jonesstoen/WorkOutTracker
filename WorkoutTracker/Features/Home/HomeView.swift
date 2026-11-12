@@ -254,9 +254,7 @@ struct HomeView: View {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button {
                     } label: {
-                        Image("AppLogo")
-                            .resizable()
-                            .scaledToFit()
+                        WorkoutMark()
                             .frame(width: 22, height: 22)
                             .padding(8)
                             .background(.ultraThinMaterial)
